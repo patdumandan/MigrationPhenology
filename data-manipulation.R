@@ -1,6 +1,7 @@
 require(dplyr)
 require(lubridate)
 require(tidyr)
+require(vegan)
 
 #per species
 #GOSHUTES####
@@ -96,30 +97,27 @@ median(hr$Julian)
 abline(h=261, lty=2)
 
 #community metrics####
-hsw=hms%>%select( -OBS,-HRS)%>%filter(!(YR<1983))
+dsw=hms%>%select( -OBS,-HRS)%>%filter(!(YR<1983))
 
-hsw[, 4:28][is.na(hsw[, 4:28])] <- 0
+dsw[, 4:28][is.na(dsw[, 4:28])] <- 0
 
-hsw=hsw%>%mutate(sd=diversity(hsw[1:25], index="shannon"), sr=specnumber(hsw[1:25]), 
+dsw=dsw%>%mutate(sd=diversity(dsw[1:25], index="shannon"), sr=specnumber(dsw[1:25]), 
                  date=make_date(YR, MO, DAY), total=rowSums(.[4:28]))
 
-hsw$Julian=as.POSIXlt(hsw$date)$yday 
+dsw$Julian=as.POSIXlt(dsw$date)$yday 
 
 #find date when SD nd SR were highest
 
-f1=hsw%>%group_by(YR)%>%filter(sd==max(sd))
-f2=hsw%>%group_by(YR)%>%filter(sr==max(sr))
-f3=hsw%>%group_by(YR)%>%filter(total==max(total))
+f1=dsw%>%group_by(YR)%>%filter(sd==max(sd))
+f2=dsw%>%group_by(YR)%>%filter(sr==max(sr))
+f3=dsw%>%group_by(YR)%>%filter(total==max(total))
 
-#plot results
-#raw
+h1=hsw%>%group_by(year)%>%filter(sd==max(sd))
+h2=hsw%>%group_by(year)%>%filter(sr==max(sr))
+h3=hsw%>%group_by(year)%>%filter(yr_tot==max(yr_tot))
+
+#PLOTS####
 par(mfrow=c(3,1))
-plot(hmstot$Julian,log(hmstot$yr_tot), col=factor(hsw$YR), main="Hawk Mt (east)", xlab="Julian date")
-plot(hsw$Julian,hsw$sd, col=factor(hsw$YR), main="species diversity", xlab="Julian date")
-plot(hsw$Julian,hsw$sr, col=factor(hsw$YR), main="species richness", xlab="Julian date")
-plot(hm$Julian~hm$YR, type="l", col="blue", ylab="mean passage date(Julian)", xlab="year", main="mean passage date")
-abline(h=272, lty=2)
-
 #target dates
 #SR
 plot(f2$Julian~f2$YR, type="l", col="blue", main="Hawk Mt(east)", ylab="Julian date", xlab="year")
@@ -131,27 +129,14 @@ lines(f1$Julian~f1$YR, type="l", col="red")
 median(f1$Julian)
 abline(h=265, lty=2, col="red")
 
-#MPD
-lines(hm$Julian~hm$YR, type="l", col="black")
-median(hm$Julian)
-abline(h=272, lty=2, col="black")
-
 #daily highest
 lines(f3$Julian~f3$YR, type="l", col="black")
 median(f3$Julian)
 abline(h=260, lty=2, col="black")
 
-#plot results
-#raw
-par(mfrow=c(3,1))
-plot(hmstot$Julian,log(hmstot$yr_tot), col=factor(hsw$YR), main="Hawk Mt (east)", xlab="Julian date")
-plot(hsw$Julian,hsw$sd, col=factor(hsw$YR), main="species diversity", xlab="Julian date")
-plot(hsw$Julian,hsw$sr, col=factor(hsw$YR), main="species richness", xlab="Julian date")
-plot(hm$Julian~hm$YR, type="l", col="blue", ylab="mean passage date(Julian)", xlab="year", main="mean passage date")
-abline(h=272, lty=2)
-
 #target dates
 #SR
+
 plot(h2$Julian~h2$year, type="l", col="blue", main="Hawk Ridge(central)", ylab="Julian date", xlab="year", ylim=c(230,305))
 median(h2$Julian)
 abline(h=269, lty=2, col="blue")
@@ -160,11 +145,6 @@ abline(h=269, lty=2, col="blue")
 lines(h1$Julian~h1$year, type="l", col="red")
 median(h1$Julian)
 abline(h=240, lty=2, col="red")
-
-#MPD
-lines(hm$Julian~hm$YR, type="l", col="black")
-median(hm$Julian)
-abline(h=272, lty=2, col="black")
 
 #daily highest
 lines(h3$Julian~h3$year, type="l", col="black")
@@ -181,16 +161,13 @@ lines(g1$Julian~g1$year, type="l", col="red")
 median(g1$Julian)
 abline(h=254, lty=2, col="red")
 
-#MPD
-lines(hm$Julian~hm$YR, type="l", col="black")
-median(hm$Julian)
-abline(h=272, lty=2, col="black")
-
 #daily highest
 lines(g3$Julian~g3$year, type="l", col="black")
 median(g3$Julian)
 abline(h=268, lty=2, col="black")
 
+legend( x= "topright",inset=0,legend=c("Species Richness", "Species Diversity", "Highest Daily Count"),
+       col=c("red", "blue", "black"), lty=1, cex=0.8, xpd=F)
 
 
 
