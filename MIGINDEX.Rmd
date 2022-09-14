@@ -1,0 +1,228 @@
+---
+title: "temporal diversity of migrating raptors"
+output: html_document
+---  
+
+**QUESTIONS**  
+
+1. How do diversity metrics (i.e., Shannon-Weiner Index) of migratory communities (i.e., raptors) vary over time? (within-season and across years)  
+
+2. Who/ what groups drive these temporal patterns in diversity?  
+
+3. How do these temporal patterns in diversity vary across the landscape (i.e., in eastern,western,central flyways)?  
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+require(dplyr)
+require(lubridate)
+require(tidyr)
+require(vegan)
+require(ggplot2)
+```  
+
+I. Temporal patterns of diversity (alpha, beta)  
+
+**a. Goshute Mts. (West)**    
+```{r include=F}
+GosMts=read.csv("GosMts.csv")
+
+#gos=GosMts%>%select(-TOTAL)%>%
+#  pivot_longer(cols=3:27, names_to = "Species", values_to="Count")%>%
+#  mutate(year=year(Date), month=month(Date), date=day(Date))%>%
+#  filter(!is.na(Count))
+
+GosMts[, 3:27][is.na(GosMts[, 3:27])] <- 0
+
+#DAILY TOTALS
+gostot=GosMts%>%select(-TOTAL)%>%
+  mutate(yr_tot=rowSums(.[3:27], na.rm=T), year=year(Date), month=month(Date), date=day(Date))%>%
+  filter(!year>2018)
+gostot$Julian=as.POSIXlt(gostot$Date)$yday 
+```
+
+```{r include=F, echo=F}
+#community metrics####
+GosMts[, 3:27][is.na(GosMts[, 3:27])] <- 0
+gsw=gostot%>%select( -Obs, -UA, -UR, -UB, -UE, -UF)%>%filter(!(year<1983))
+
+gsw=gsw%>%mutate(sd=diversity(gsw[2:21], index="shannon"), sr=specnumber(gsw[2:21]))
+
+#find date when SD nd SR were highest
+
+g1=gsw%>%group_by(year)%>%filter(sd==max(sd))
+
+#species-level####
+
+gos_sp=GosMts%>%select(-TOTAL)%>%
+  pivot_longer(cols=3:27, names_to = "Species", values_to="Count")%>%
+  mutate(year=year(Date), month=month(Date), date=day(Date))%>%
+  filter(!is.na(Count))
+
+spmpd=gos_sp%>%group_by(Species,Date)%>%summarise(sptot=sum(Count))%>%
+  filter(!Species%in%c("UA", "UR", "UB", "UE", "UF"))
+spmpd$Julian=as.POSIXlt(spmpd$Date)$yday 
+
+indextab=gsw%>%select(Date,year, month, date, Julian, sd, sr)#all time sr and sd
+indextab_maxsd=g1%>%select(Date,year, month, date, Julian, sd, sr)#all time sr and sd
+indtab1=left_join(indextab_maxsd, spmpd)
+```  
+
+```{r echo=F}  
+ggplot(indtab1, aes(x=Julian, y=sd, col=year))+geom_line()+
+  annotate("rect", xmin=250,  xmax=270, alpha=0.1, fill="blue",ymin=1.75, ymax=2.2)+
+  ggtitle("Goshutes")+theme_classic()+geom_hline(yintercept=1.91, linetype=2)+
+  ylab("H' index")+xlab("date of highest SD (Julian)")
+
+ggplot(indtab1, aes(y=Julian, x=year, col=sd))+geom_point()+geom_hline(yintercept=257, linetype=2)+theme_classic()
+
+ggplot(indtab1, aes(x=Julian, y=sptot, col=Species))+
+  geom_line()+ggtitle("Goshutes")+ylab("Count")+xlab("date of highest SD (Julian)")+
+  theme_classic()+annotate("rect", xmin=250, xmax=270, alpha=0.1, fill="blue", 
+                           ymin=0, ymax=550)+geom_label(label=indtab1$Species)
+
+```  
+
+Observations:  
+
+1. seems like across all years, diversity is highest early in the season, and rapidly fluctuates around middle of the season, dips towards the end of migration season  
+2. during middle of season, on days when diversity is highest, COHA, SSHA, RTHA, TUVU predominate (or is also their peak migration period)  
+3. early in the season, species richness rather than abundance seems to be a bigger factor driving diversity index because counts of species are low on dates of highest species diversity (based on figure)  
+
+**b. Hawk Mt. (East)**  
+
+```{r include=F}  
+hms=read.csv("HMSDay.csv")
+#combine baea and goea data
+hmstot=hms%>%
+  mutate(BAEA=rowSums(.[9:11]), GOEA=rowSums(.[21:23]))%>%
+  select(-OBSERVERS, -GOEA.I, -GOEA.A, -GOEA.U, -BAEA.I, -BAEA.U, -BAEA.A, -RAPTORS)%>%
+  mutate(yr_tot=rowSums(.[6:30], na.rm=T), date=make_date(YR, MO, DAY))
+
+hmstot$Julian=as.POSIXlt(hmstot$date)$yday 
+```  
+
+```{r include=F}
+#community metrics####
+hsw=hmstot%>%select( -OBS,-HRS, -UNID.ACCIPITER,
+                  -UNID.BUTEO, -UNID.EAGLE, -UNID.FALCON, -UNID.RAPTOR)%>%filter(!(YR<1983))
+
+hsw[, 4:23][is.na(hsw[, 4:23])] <- 0
+
+hsw=hsw%>%mutate(sd=diversity(hsw[4:23], index="shannon"), sr=specnumber(hsw[4:23]), 
+                 Date=make_date(YR, MO, DAY), total=rowSums(.[4:23]))
+
+hsw$Julian=as.POSIXlt(hsw$Date)$yday 
+
+#find date when SD nd SR were highest
+
+f1=hsw%>%group_by(YR)%>%filter(sd==max(sd))
+#species-level####
+
+hms_sp=hmstot%>%
+  pivot_longer(cols=6:30, names_to = "Species", values_to="Count")%>%
+  filter(!is.na(Count), !YR<1983, !Species%in%c("UNID.ACCIPITER",
+                                                "UNID.BUTEO", 
+                                                "UNID.EAGLE",
+                                                "UNID.FALCON",
+                                                "UNID.RAPTOR"))%>%
+  mutate(Date=make_date(YR, MO, DAY))
+
+hmsmpd=hms_sp%>%group_by(Species,Date)%>%summarise(sptot=sum(Count))
+hmsmpd$Julian=as.POSIXlt(hmsmpd$Date)$yday 
+
+indextabh=hsw%>%select(Date,YR, MO, DAY, Julian, sd, sr)#all time sr and sd
+indextabh_maxsd=f1%>%select(Date,YR, MO, DAY, Julian, sd, sr)#all time sr and sd
+indtab2=left_join(indextabh_maxsd, hmsmpd)
+```  
+
+```{r echo=F}
+ggplot(indtab2, aes(x=Julian, y=sd, col=YR))+geom_line()+
+  annotate("rect", xmin=230,  xmax=250, alpha=0.1, fill="blue",ymin=1.55, ymax=2.2)+
+  annotate("rect", xmin=330,  xmax=350, alpha=0.1, fill="blue",ymin=1.55, ymax=2.2)+
+  ggtitle("Hawk Mountain")+theme_classic()+geom_hline(yintercept=1.92, linetype=2)+
+  ylab("H' index")+xlab("date of highest SD (Julian)")
+
+ggplot(indtab2, aes(y=Julian, x=YR, col=sd))+geom_point()+geom_hline(yintercept=242.5, linetype=2)+xlab("year")+theme_classic()
+
+ggplot(indtab2, aes(x=Julian, y=sptot, col=Species))+geom_label(label=indtab2$Species)+
+  geom_line()+ggtitle("Hawk Mountain")+ylab("Count")+xlab("date of highest SD (Julian)")+
+  theme_classic()+annotate("rect", xmin=230, xmax=250, alpha=0.1, fill="blue", 
+                           ymin=0, ymax=80)+
+  annotate("rect", xmin=330, xmax=350, alpha=0.1, fill="blue", 
+           ymin=0, ymax=80)
+```    
+
+Observations:  
+
+1. highest species diversity at beginning and end of season (expected), and somewhat constant middle of season (predominantly of SSHA, BWHA, COHA)  
+2. seems like date when diversity is highest did not shift over time at HMS  
+3. species identity is driving temporal patterns of diversity rather than abundance (low counts but many species)  
+
+c. Hawk Ridge (Central)  
+
+```{r include=F}  
+#Hawk Ridge###
+HawRd=read.csv("HawkRid.csv")
+HawRd[, 3:24][is.na(HawRd[, 3:24])] <- 0
+
+hrtot=HawRd%>%select(-TOTAL)%>%
+  mutate(yr_tot=rowSums(.[3:24], na.rm=T), year=year(Date), month=month(Date), date=day(Date))%>%
+  filter(!year>2015) #get annual totals across all spp.
+
+hrtot$Julian=as.POSIXlt(hrtot$Date)$yday 
+```  
+
+```{r include=F}
+#community metrics####
+rsw=hrtot%>%select( -ObsHrs, -UA, -UB, -UF, -UE, -UR)%>%filter(!(year<1983))
+
+rsw=rsw%>%mutate(sd=diversity(rsw[2:18], index="shannon"), sr=specnumber(rsw[2:18]))
+
+r1=rsw%>%group_by(year)%>%filter(sd==max(sd))
+
+#species-level####
+
+hr_sp=rsw%>%
+  pivot_longer(cols=2:18, names_to = "Species", values_to="Count")%>%
+  filter(!is.na(Count))
+
+hrmpd=hr_sp%>%group_by(Species,Date)%>%summarise(sptot=sum(Count))
+hrmpd$Julian=as.POSIXlt(hrmpd$Date)$yday 
+
+indextabhr=rsw%>%select(Date,year, month, date, Julian, sd, sr)#all time sr and sd
+indextabhr_maxsd=r1%>%select(Date,year, month, date, Julian, sd, sr)#all time sr and sd
+indtab3=left_join(indextabhr_maxsd, hrmpd)
+```  
+
+```{r echo=F}
+ggplot(indtab3, aes(x=Julian, y=sd, col=year))+geom_line()+
+  annotate("rect", xmin=225,  xmax=240, alpha=0.1, fill="blue",ymin=1.55, ymax=2.1)+
+  annotate("rect", xmin=255,  xmax=265, alpha=0.1, fill="blue",ymin=1.55, ymax=2.1)+
+  ggtitle("Hawk Ridge")+theme_classic()+geom_hline(yintercept=1.78, linetype=2)+
+  ylab("H' index")+xlab("date of highest SD (Julian)")
+
+ggplot(indtab3, aes(y=Julian, x=year, col=sd))+geom_point()+geom_hline(yintercept=241, linetype=2)+xlab("year")+theme_classic()
+
+ggplot(indtab3, aes(x=Julian, y=sptot, col=Species))+geom_label(label=indtab3$Species)+
+  geom_line()+ggtitle("Hawk Ridge")+ylab("Count")+xlab("date of highest SD (Julian)")+
+  theme_classic()+annotate("rect", xmin=225, xmax=240, alpha=0.1, fill="blue", 
+                           ymin=0, ymax=350)+
+  annotate("rect", xmin=255, xmax=265, alpha=0.1, fill="blue", 
+           ymin=0, ymax=350)
+```  
+
+Observations:  
+
+1. early and mid of season is when diversity is highest (like in West)  
+2. seems like dates of high diversity is occurring earlier in the season in this site 3.  low abundances of species on high diversity dates  
+
+Questions for Morgan:  
+
+1. in calculating diversity index, not include unknowns--correct?  
+2. how to assess temporal beta (functional) diversity  
+3. when assessing shifts in assemblage composition over time, do I want to focus on a certain period, and see the abundances and identities of species during those specific dates?  
+4. how many sites would be reasonable to look at?  
+5. should I include spring counts? (issue: not a lot of sites do spring and fall) currently have a list of sites from Laurie  
+
+
+
