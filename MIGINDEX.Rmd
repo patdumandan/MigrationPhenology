@@ -274,6 +274,60 @@ ggplot(gos_sp, aes(x=year, y=log(yr_tot)))+geom_point()+facet_wrap(~Species)+
   stat_smooth(method="lm")+theme_classic()+ylab ("max counts (log)")
 ```  
 
+**Diet**  
+
+```{r echo=F}
+GosMts=read.csv("GosMts.csv")
+
+GosMts[, 3:27][is.na(GosMts[, 3:27])] <- 0
+
+gos=GosMts%>%select(-TOTAL)%>%
+  pivot_longer(cols=3:27, names_to = "Species", values_to="Count")%>%
+  mutate(year=year(Date), month=month(Date), date=day(Date))%>%
+  filter(!is.na(Count))
+
+gos=gos%>%mutate(Julian=as.POSIXlt(Date)$yday,
+                  diet=case_when(Species=="AK" ~"bird",
+                                 Species=="BE" ~"other",
+                                 Species=="CH" ~"bird",
+                                 Species=="BV" ~ "other",
+                                 Species=="TV" ~"other",
+                                 Species=="OS" ~"other",
+                                 Species== "NH" ~"mammal",
+                                 Species=="SS" ~"bird",
+                                 Species=="NG"~ "bird",
+                                 Species=="RS" ~"mammal",
+                                 Species=="BW"~"mammal",
+                                 Species=="RT" ~"mammal",
+                                 Species=="RL" ~"mammal",
+                                 Species=="SW"~"mammal",
+                                 Species=="FH"~"mammal",
+                                 Species=="GE"~"mammal",
+                                 Species=="ML"~"bird",
+                                 Species=="PG"~"bird",
+                                 Species=="PR"~"mammal",
+                                 Species=="MK"~"other"))%>%
+                   filter(!Species%in%c("UA", "UB", "UF", "UE", "UR"))
+
+gos_sp_max=gos%>%mutate(Julian=as.POSIXlt(Date)$yday)%>%
+  group_by(year, Species, diet)%>%
+  filter(Count==max(Count), !Species%in%c("UA", "UB", "UE", "UF", "UR"))%>%slice_head(n=1)%>%
+  arrange(year)
+
+gos_sp=gos%>%mutate(Julian=as.POSIXlt(Date)$yday)%>%
+  group_by(year, Species, diet)%>%
+  summarise(yr_tot=sum(Count))%>%filter(!Species%in%c("UA", "UB", "UE", "UF", "UR"))%>%
+  arrange(year)
+
+#numbers
+ggplot(gos_sp, aes(x=year, y=log(yr_tot), col=Species))+geom_point()+facet_wrap(~diet)+
+  stat_smooth(method="lm")+theme_classic()
+
+#timing
+ggplot(gos_sp_max, aes(x=year, y=Julian, col=Species))+geom_point()+facet_wrap(~diet)+
+  stat_smooth(method="lm")+geom_hline(yintercept=268, linetype=2)+theme_classic()
+```
+
 **Observations**  
 
 1. increasing abundance trends of broadwings, peregrines, merlins, swainson's, turkey vultures (all species have peak migration dates around the same time as "community-level peak migration date)    
@@ -388,9 +442,3 @@ ggplot(hr_sp_max, aes(x=year, y=log(Count)))+geom_point()+stat_smooth(method="lm
 2. figure out what model to fit  
 
 
-**Questions for Morgan:**    
-
-1. in calculating diversity index, not include unknowns--correct?  
-3. Is this a good rabbit hole to go into: when assessing shifts in assemblage composition over time, do I want to focus on a certain period, and see the abundances and identities of species during those specific dates?  
-4. how many sites would be reasonable to look at?  
-5. should I include spring counts? (issue: not a lot of sites do spring and fall) currently have a list of sites from Laurie  
