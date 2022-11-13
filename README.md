@@ -1,3 +1,9 @@
 # MigrationPhenology  
 
-Research question: how does migration phenology of raptor assemblages in N. America vary over large spatial scales, and how does community composition affect these variations?
+Research question: how do multi-species phenological shifts affect biodiversity patterns over time?  
+
+Folders:  
+
+data- relevant datasets  
+exploratory- all exploratory R scripts  
+RScripts- all final data cleaning and data analyses scripts
