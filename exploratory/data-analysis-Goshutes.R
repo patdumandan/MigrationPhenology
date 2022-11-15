@@ -3,68 +3,27 @@ require(tidyr)
 require(lubridate)
 require(ggplot2)
 require(vegan)
-GosMts=read.csv("GosMts.csv")
-
-#site-level patterns
-gostot=GosMts%>%select(-TOTAL)%>%
+#data manipulation####
+GosMts=read.csv("D:/Dropbox (UFL)/PhD-stuff/MigrationPhenology/data/GosMts.csv")
+GosMts[, 3:27][is.na(GosMts[, 3:27])] <- 0
+GosMts$Julian=as.POSIXlt(GosMts$Date)$yday 
+GosMts=GosMts%>%select(-TOTAL)%>%
   mutate(yr_tot=rowSums(.[3:27], na.rm=T), year=year(Date), month=month(Date), date=day(Date))%>%
-  filter(!year>2018)
-gostot$Julian=as.POSIXlt(gostot$Date)$yday 
+  filter(!year>2018, !Julian>308)
+
+#select only 1983-2018 (Aug 15-Nov 5)
 
 #trend in max migration dates
-gostotmax=gostot%>%group_by(year)%>%filter(yr_tot==max(yr_tot))
+gostotmax=GosMts%>%group_by(year)%>%filter(yr_tot==max(yr_tot))
 
 ggplot(gostotmax, aes(x=year, y=Julian))+geom_point()+geom_hline(yintercept=268, linetype=2)+ggtitle("Goshutes")+ylab("peak migration date(Julian)")+
-  stat_smooth(method="lm")+theme_classic()
-
-#community metrics####
-GosMts[, 3:27][is.na(GosMts[, 3:27])] <- 0
-gsw=gostot%>%select( -Obs)%>%filter(!(year<1983))
-
-require(vegan)
-#calculate diversity and richness
-gsw=gsw%>%mutate(sd=diversity(gsw[2:26], index="shannon"), sr=specnumber(gsw[2:26]))
-gsw[, 2:26][is.na(gsw[, 2:26])] <- 0
-
-#find date when SD nd SR were highest
-
-g1=gsw%>%group_by(year)%>%filter(sd==max(sd))
-g2=gsw%>%group_by(year)%>%filter(sr==max(sr))
-g3=gsw%>%group_by(year)%>%filter(yr_tot==max(yr_tot))
-
-#Goshutes
-#par(mfrow=c(2,1))
-
-plot(g1$Julian~g1$year, type="l", col="black", main="species diversity", ylab="peak diversity date", xlab="year", ylim=c(230,308))
-abline(h=254, lty=2, col="black")
-rect(xleft=1995, ybottom=0, ytop=308, xright=2005, col = rgb(0,0,0.5, 1/4)) #control
-
-plot(g1$sd~g1$year, type="l")
-abline(h=2.04, lty=2)
-rect(xleft=1995, ybottom=0, ytop=308, xright=2005, col = rgb(0,0,0.5, 1/4)) #control
-
-#SD
-plot(g1$Julian~g1$year, type="l", col="red")
-median(g1$Julian)
-abline(h=254, lty=2, col="red")
-
-#daily highest
-lines(g3$Julian~g3$year, type="l", col="black")
-median(g3$Julian)
-abline(h=268, lty=2, col="black")
-
-legend( x= "topright",inset=0,legend=c("Species Richness", "Species Diversity", "Highest Daily Count"),
-        col=c("red", "blue", "black"), lty=1, cex=0.8, xpd=F)
-
-
+  stat_smooth(method="gam")+theme_classic()
 
 #functional/species-level patterns
-gos=GosMts%>%select(-TOTAL)%>%
-  pivot_longer(cols=3:27, names_to = "Species", values_to="Count")%>%
-  mutate(year=year(Date), month=month(Date), date=day(Date))%>%
-  filter(!is.na(Count))
+gos=GosMts%>%select(-yr_tot,)%>%
+  pivot_longer(cols=3:27, names_to = "Species", values_to="Count")
 
-gos=gos%>%mutate(Julian=as.POSIXlt(Date)$yday,
+gos=gos%>%mutate(
                  diet=case_when(Species=="AK" ~"bird",
                                 Species=="BE" ~"other",
                                 Species=="CH" ~"bird",
@@ -130,50 +89,60 @@ gos=gos%>%mutate(Julian=as.POSIXlt(Date)$yday,
 gos$mammals=as.numeric(gos$mammals)
 gos$birds=as.numeric(gos$birds)
 str(gos)
-
-gos_sp=gos%>%mutate(Julian=as.POSIXlt(Date)$yday)%>%
+#annual totals per species
+gos_sp=gos%>%
   group_by(year, Species, diet, mammals, birds)%>%
-  summarise(yr_tot=sum(Count))%>%filter(!Species%in%c("UA", "UB", "UE", "UF", "UR"))%>%
+  summarise(yr_tot=sum(Count))%>%
+  mutate(spcode=as.integer(as.character(Species)))%>%
   arrange(year)
-
-gos_sp_day=gos%>%mutate(Julian=as.POSIXlt(Date)$yday)%>%
-  filter(!Julian<226, !Julian>308)%>%
+  
+#daily totals per species
+gos_sp_day=gos%>%
   group_by(Species,diet, year, Julian)%>%
   summarise(total=sum(Count))%>%
   arrange(year)
 
+#peak dates of migration for each species
 gos_sp_day_max=gos_sp_day%>%
   group_by(diet, year, Species)%>%
-  filter(total==max(total), !year>2018)%>%
+  filter(total==max(total))%>%
   slice_head(n=1)%>%
   arrange(year)
 
-ggplot(gos_sp_day_max, aes(x=year, y=log(total), col=Species))+geom_point()+
-  stat_smooth(method="lm")+theme_classic()+facet_wrap(~diet)+
-  geom_vline(xintercept=2005, lty=2)+
-  geom_vline(xintercept=1996, lty=2)
+#plot annual totals trend per species
+ggplot(gos_sp, aes(x=year, y=log(yr_tot), col=Species))+geom_point()+
+  stat_smooth(method="lm")+theme_classic()+facet_wrap(~Species)
 
+#plot peak dates trend per species
 ggplot(gos_sp_day_max, aes(x=year, y=Julian, col=Species))+geom_point()+
-  stat_smooth(method="lm")+theme_classic()+facet_wrap(~diet)+
-  geom_vline(xintercept=2005, lty=2)+
-  geom_vline(xintercept=1996, lty=2)
+  stat_smooth(method="lm")+theme_classic()+facet_wrap(~Species)
 
-gos_grp_day=gos%>%mutate(Julian=as.POSIXlt(Date)$yday)%>%
-  filter(!Julian<226, !Julian>308)%>%
+#annual totals per functional group
+
+gos_grp=gos%>%
+  group_by(year, diet)%>%
+  summarise(yr_tot=sum(Count))
+  
+#get daily totals by functional group
+gos_grp_day=gos%>%
   group_by(year,Julian, diet)%>%
   summarise(total=sum(Count))%>%
   arrange(year)
 
+#get peak dates per functional group
 gos_grp_day_max=gos_grp_day%>%
   group_by(diet, year)%>%
   filter(total==max(total))%>%
   slice_head(n=1)%>%
   arrange(year)
 
+#plot peak dates trend 
 ggplot(gos_grp_day_max, aes(x=year, y=Julian, col=diet))+geom_point()+
-  stat_smooth(method="gam")+theme_classic()+
-  geom_vline(xintercept=2005, lty=2)+
-  geom_vline(xintercept=1996, lty=2)
+  stat_smooth(method="gam")+theme_classic()
+
+#plot annual trends per functional group
+ggplot(gos_grp, aes(x=year, y=yr_tot, col=diet))+geom_point()+
+  stat_smooth(method="gam")+theme_classic()
 
 #categorical
 gos_sp_max=gos%>%mutate(Julian=as.POSIXlt(Date)$yday)%>%
