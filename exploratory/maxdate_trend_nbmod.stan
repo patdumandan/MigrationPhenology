@@ -1,10 +1,11 @@
 data {
                  
-                 vector<lower=0,upper=0>[2] zeros2; // vector for random effects distribution
+                 vector<lower=0,upper=0>[3] zeros3; // vector for random effects distribution
                  int N; //no.of observations (length of hms$year)
                  int Nsp; //no.of populations
                  real years[N];//explanatory variable (centered around mean)
-                 int count[N];//no.of individuals per year
+                 int count[N];//peak counts per year
+                 real Julian [N]; // peak dates of migration
                  //real obs_days[N]; // obs.effort
                  int spcode[N];// id for each population
                  
@@ -12,22 +13,23 @@ data {
                  
                  parameters {
                  
-                 vector[2] beta;            // fixed effects, intercept and slopes
+                 vector[3] beta;            // fixed effects, intercept and slopes
                  //real<lower=-0.86,upper=0.83> bkpoint;// fixed effects, knotpoint (bounding specified to help convergence)
-                 vector<lower=0>[2] sigma_sp;   // level 2 error sd per parameter
+                 vector<lower=0>[3] sigma_sp;   // level 2 error sd per parameter
                  real<lower=0> phi;        // level 1 error sd
-                 vector[2] u[Nsp];         //  level 2 error sd per species per parameter
-                 cholesky_factor_corr[2] L_u_Corr; // cholesky factor for the random effects correlation matrix
+                 vector[3] u[Nsp];         //  level 2 error sd per species per parameter
+                 cholesky_factor_corr[3] L_u_Corr; // cholesky factor for the random effects correlation matrix
                  
                  }
                  
                  transformed parameters {  
-                 vector[2] alpha[Nsp];     // random effects
+                 vector[3] alpha[Nsp];     // random effects
                  real<lower=0> y_mu[N];              // mean parameter based on regression equation
                  
                  for (i in 1:Nsp) {
                  alpha[i,1] = beta[1] + u[i,1];
                  alpha[i,2] = beta[2] + u[i,2];
+                 alpha[i,3] = beta[3] + u[i,3];
                  
                  }
                  
@@ -39,7 +41,7 @@ data {
                  for (j in 1:N){
                  
                  
-                 y_mu[j]= exp(alpha[spcode[j],1]+alpha[spcode[j],2]* (years[j]));
+                 y_mu[j]= exp(alpha[spcode[j],1]+alpha[spcode[j],2]* (years[j])+ alpha[spcode[j],3]* (Julian[j]));
                  
                  }
                  
@@ -53,11 +55,13 @@ data {
                  
                  beta[1] ~ normal(0, 10); // prior: fixed effect, intercept
                  beta[2] ~ normal(0, 10);   // prior: fixed effect, slope before knot
+                 beta[3] ~ normal(0, 10);   // prior: fixed effect, slope before knot
                  
                  // prior: fixed effect, knot point
                  
                  sigma_sp[1] ~ cauchy(0,2.5);    // prior: random effect sd, intercept
                  sigma_sp[2] ~ cauchy(0,2.5);    // prior: random effect sd, slope before bkpt
+                 sigma_sp[3] ~ cauchy(0,2.5);    // prior: random effect sd, slope before bkpt
                  
                  phi ~ cauchy(0,2.5);       // prior: level 1 error sd
                  
@@ -72,7 +76,7 @@ data {
                  // random effects distribution
                  //=============================
                  
-                 for (i in 1:Nsp) u[i] ~ multi_normal_cholesky(zeros2, diag_pre_multiply(sigma_sp, L_u_Corr));
+                 for (i in 1:Nsp) u[i] ~ multi_normal_cholesky(zeros3, diag_pre_multiply(sigma_sp, L_u_Corr));
                  // NB. the second parameter here is the cholesky factor L 
                  // (for the correlation matrix). It only uses the sd rather 
                  // than the variances since Sigma = L*L'
@@ -88,10 +92,10 @@ data {
                  generated quantities {
                  
                  int <lower=0> y_mu_pred[N];   // predicted mean
-                 corr_matrix[2] u_Corr;   // random effects correlation matrix
-                 matrix[2,2] u_Sigma;     // random effects covariance matrix
+                 corr_matrix[3] u_Corr;   // random effects correlation matrix
+                 matrix[3,3] u_Sigma;     // random effects covariance matrix
                  vector[N] log_lik;
-                 vector[2] alpha_tosave[Nsp];
+                 vector[3] alpha_tosave[Nsp];
                  // monitor random effects for a subset of patients only
                  // (for plotting predictions) and do not monitor 'alpha' 
                  // in the model above (since it consumes too much memory!)

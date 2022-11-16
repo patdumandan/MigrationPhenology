@@ -3,6 +3,7 @@ require(tidyr)
 require(lubridate)
 require(ggplot2)
 require(vegan)
+
 #data manipulation####
 GosMts=read.csv("D:/Dropbox (UFL)/PhD-stuff/MigrationPhenology/data/GosMts.csv")
 GosMts[, 3:27][is.na(GosMts[, 3:27])] <- 0
@@ -13,11 +14,19 @@ GosMts=GosMts%>%select(-TOTAL)%>%
 
 #select only 1983-2018 (Aug 15-Nov 5)
 
+gostot=GosMts%>%group_by(year)%>%summarise(annual_count=sum(yr_tot))
+
+ggplot(gostot, aes(y=annual_count, x=year))+geom_point()+geom_vline(xintercept=1995, linetype=2)+stat_smooth(method="gam")+theme_classic()
+
 #trend in max migration dates
 gostotmax=GosMts%>%group_by(year)%>%filter(yr_tot==max(yr_tot))
 
 ggplot(gostotmax, aes(x=year, y=Julian))+geom_point()+geom_hline(yintercept=268, linetype=2)+ggtitle("Goshutes")+ylab("peak migration date(Julian)")+
   stat_smooth(method="gam")+theme_classic()
+
+ggplot(gostotmax, aes(x=year, y=yr_tot))+geom_point()+ggtitle("Goshutes")+ylab("peak migration counts")+
+  stat_smooth(method="gam")+theme_classic()
+
 
 #functional/species-level patterns
 gos=GosMts%>%select(-yr_tot,)%>%
@@ -90,11 +99,13 @@ gos$mammals=as.numeric(gos$mammals)
 gos$birds=as.numeric(gos$birds)
 str(gos)
 #annual totals per species
+
 gos_sp=gos%>%
   group_by(year, Species, diet, mammals, birds)%>%
   summarise(yr_tot=sum(Count))%>%
-  mutate(spcode=as.integer(as.character(Species)))%>%
   arrange(year)
+
+gos_sp$spcode=as.integer(as.factor(gos_sp$Species))
   
 #daily totals per species
 gos_sp_day=gos%>%
@@ -102,12 +113,46 @@ gos_sp_day=gos%>%
   summarise(total=sum(Count))%>%
   arrange(year)
 
+#determine peak migration windows per species
+sp_window1=gos_sp_day%>%group_by(Species, year)%>%
+  filter(total>0)%>%
+  filter(Julian==min(Julian))%>%
+  rename("first_obs"="Julian")
+
+window1_freq=sp_window1%>%group_by(Species, first_obs)%>%tally()%>%
+  filter(n==max(n))%>%rename("window1_freq"="n")
+
+sp_window2=gos_sp_day%>%group_by(Species, year)%>%
+  filter(total>0)%>%
+  filter(Julian==max(Julian))%>%
+  rename("last_obs"="Julian")
+
+window2_freq=sp_window2%>%group_by(Species, last_obs)%>%tally()%>%
+  filter(n==max(n))%>%rename("window2_freq"="n")
+
 #peak dates of migration for each species
 gos_sp_day_max=gos_sp_day%>%
   group_by(diet, year, Species)%>%
   filter(total==max(total))%>%
   slice_head(n=1)%>%
   arrange(year)
+
+gos_sp_day_max$spcode=as.integer(as.factor(gos_sp_day_max$Species))
+
+max_freq=gos_sp_day_max%>%group_by(Species, Julian)%>%tally()%>%
+  filter(n==max(n))%>%rename("max_freq"="n")
+
+gos_mpd=gos_sp_day%>%group_by(Species, year)%>%mutate(cum_tot=cumsum(total), #get cumulative sum for each year
+                                  cum_pt=cum_tot/sum(total),#calculate % of daily count/annual count
+                                  MPD=if_else(cum_pt>=0.5,"1", "0"))%>% #flag rows with cumulative % >50%
+  group_by(Species, year)%>%filter(MPD==1)%>%slice_head(n=1)  #select rows where cum_pt is >50%
+
+mpd_freq=gos_mpd%>% group_by(Species, Julian)%>%tally()%>%
+  filter(n==max(n))%>%rename("mpd_freq"="n")
+
+#plot MPD trends
+ggplot(gos_mpd, aes(x=year, y=Julian, col=Species))+geom_point()+
+  stat_smooth(method="lm")+theme_classic()+facet_wrap(~Species)
 
 #plot annual totals trend per species
 ggplot(gos_sp, aes(x=year, y=log(yr_tot), col=Species))+geom_point()+
@@ -209,7 +254,13 @@ ggarrange(g1,g3, g8, g7)
 summary(lm(gos_sp_max$Julian~gos_sp_max$mammals))
 
 #diversity values model####
-g1=gsw%>%group_by(year)%>%filter(sd==max(sd))
+
+gsw=GosMts%>%select(-UA, -UR, -UB, -UE, -UF)%>%mutate(specdiv=diversity(GosMts[3:22], index="shannon"), specric=specnumber(GosMts[3:22]))
+
+#find date when SD nd SR were highest
+
+g1=gsw%>%group_by(year)%>%filter(specdiv==max(specdiv))
+g2=gsw%>%group_by(year)%>%filter(specric==max(specric))
 
 t1=left_join(gos_sp_day_max, g1, by="year")%>%select(Species, diet, year, Julian.x, total, sd, Julian.y)%>%
   rename("sp_peak"="Julian.x", "div_index"="sd", "div_peak"="Julian.y")
