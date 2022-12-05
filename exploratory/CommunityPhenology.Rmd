@@ -1,0 +1,259 @@
+## **Chapter 3: Community-level Phenological Patterns**
+
+### **Overview**
+
+Identifying large-scale patterns of phenological responses to climate change is a nontrivial task for ecologists because of the spatial and temporal heterogeneity of its impacts (Nijland et al., 2016; Wolkovich et al., 2014). Moreover, species in ecological communities or assemblages exhibit context-dependent associations with the environment. In fact, this is especially true for assemblages of migratory animals because changing conditions along their migratory routes over the course of their migration period can elicit different responses (Gill et al. 2019). While individual species responses can vary greatly, examining a measure of an emergent community property from the aggregation of these responses (e.g., shifts in timing; Walters et al. 2013) can be useful to assess climate change impacts on communities.
+
+Assessing how individual species responses scale up to influence observed community-level patterns has been largely disregarded in phenological research (Steltzer and Post 2009). Specifically, the effects of shifts in community composition and structure on aggregate phenological responses have generally been overlooked (Walters et al. 2013). Usually, observed abundances of several species of migrating animals (e.g., birds) over the season are mainly used to develop species-specific phenological metrics. For example, bird migration can be described in terms of the arrival and departure date of migrants, and their passage windows (e.g., date when 50% or 95% of total migrants passed a site; (Denny et al., 2014; Farmer et al., 2007)). Using one or a few of these event-based phenological metrics, however, provide us with incomplete information about phenological dynamics (Knudsen et al. 2011) and their emergent properties. Thus, characterizing phenological trends of diversity measures, which summarize key ecological aspects of communities, can be useful in gaining a better understanding of the extent of climate change impacts on the temporal axis of biodiversity. Moreover, examining the inferences drawn when community-level phenological responses are taken at face value, and how they correspond with constituent species-level responses can be informative of the link between phenological shifts at the species and community level.
+
+In this study, I will use fall migration count data from hawk watch sites (with \> 10 years of monitoring data) that sample potentially unique flight corridors across three major flyways (east, west, central) in the contiguous US (at least 9 sites listed below) to examine community-level phenological responses. Specifically, I will characterize temporal trends in diversity measures (e.g., peak diversity dates, based on Shannon diversity index or H') for different assemblage groupings in each flyway (i.e.,all taxa: each hawk watchsite is considered an assemblage; functional groups based on diet: avian-eaters, mammal-eaters) to determine spatial patterns in community-level phenological responses. Then, I will determine whether temporal trends (e.g., advanced, delayed, or no shift) in community phenology correspond with the phenological trends of constituent species or were borne from shifts in community composition (e.g., shifts in relative abundance of early or late-season migrants, or of dominant species occurring earlier or later in the season, etc.; Fig. 1). By doing so, we can gain a more nuanced understanding of phenological shifts at multiple ecological levels of organization. ![](images/present13.png)
+
+Fig.1. Conceptual diagram of the roles of phenological (b) and compositional shifts (c) in driving community-level phenological repsonses.
+
+### **Analytical Approach**
+
+#### I. Data Acquisition
+
+I will download/obtain daily migration count data from hawkcount.org for representative sites in the:
+
+a\. eastern flyway
+
+1.  Hawk Mountain (Pennsylvania)
+2.  Cape May (New Jersey)
+3.  Wachusett Mountain (Massachusetts)
+
+b\. central flyway
+
+1.  Hawk Ridge (Minnesota)
+2.  Detroit River Hawk Watch (Michigan)
+3.  Illinois Beach (Illinois)
+
+c\. western flyway
+
+1.  Goshute Mountains (Nevada)
+2.  Chelan Ridge (Washington)
+3.  Bridger Mountains (Montana)
+
+#### II. Data Analyses  
+
+Example site: Goshute Mts (Nevada)
+
+**A. Spatial patterns in community phenology trends**
+
+1.  determine within-season patterns of diversity of different communities at different flyways (plot and model diversity measure across the season/Julian date)
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+require(dplyr)
+require(lubridate)
+require(tidyr)
+require(vegan)
+require(ggplot2)
+require(ggpubr)
+```
+
+```{r include=F}
+#data manipulation####
+GosMts=read.csv("D:/Dropbox (UFL)/PhD-stuff/MigrationPhenology/data/GosMts.csv")
+GosMts[, 3:27][is.na(GosMts[, 3:27])] <- 0
+GosMts$Julian=as.POSIXlt(GosMts$Date)$yday 
+GosMts=GosMts%>%select(-TOTAL)%>%
+  mutate(yr_tot=rowSums(.[3:27], na.rm=T), year=year(Date), month=month(Date), date=day(Date))%>%
+  filter(!year>2018, !Julian>308)
+
+avian_grp=GosMts%>%select(Date, Obs, SS, CH, NG, AK, ML, PG)%>%mutate(community="bird eaters")
+avian_grp=avian_grp%>%mutate(year=year(Date),specdiv=diversity(avian_grp[3:8], index="shannon"), specric=specnumber(avian_grp[3:8]))
+avian_grp$Julian=as.POSIXlt(avian_grp$Date)$yday 
+
+mam_grp=GosMts%>%select(Date, Obs, NH, RS, BW, RT, RL, SW, FH, GE, PR)%>%mutate(community="mammal eaters")
+mam_grp=mam_grp%>%mutate(year=year(Date),specdiv=diversity(mam_grp[3:11], index="shannon"), specric=specnumber(mam_grp[3:11]))
+mam_grp$Julian=as.POSIXlt(mam_grp$Date)$yday 
+
+gsw=GosMts%>%select(-UA, -UR, -UB, -UE, -UF)%>%
+  mutate(specdiv=diversity(GosMts[3:22], index="shannon"), specric=specnumber(GosMts[3:22]), community="all")
+
+g1=gsw%>%group_by(year)%>%filter(specdiv==max(specdiv))%>% slice_head(n=1)
+a1=avian_grp%>%mutate(year=year(Date))%>%group_by(year)%>%filter(specdiv==max(specdiv))%>% slice_head(n=1)
+m1=mam_grp%>%mutate(year=year(Date))%>%group_by(year)%>%filter(specdiv==max(specdiv))%>% slice_head(n=1)
+
+mm1=m1%>%select(Date, Julian, year, specdiv, community)
+aa1=a1%>%select(Date, Julian, year, specdiv, community)
+gg1=g1%>%select(Date, Julian, year, specdiv, community)
+
+full_gos_peak=rbind(aa1,mm1,gg1)
+full_gos1_peak=full_gos_peak%>%filter(year<2001)
+full_gos2_peak=full_gos_peak%>%filter(year>2000)
+
+gg2=gsw%>%select(Date, Julian, year, specdiv, community)
+mm2=mam_grp%>%select(Date, Julian, year, specdiv, community)
+aa2=avian_grp%>%select(Date, Julian, year, specdiv, community)
+
+full_gos=rbind(gg2,mm2,aa2)
+
+full_gos11=full_gos%>%filter(year<2001)
+full_gos22=full_gos%>%filter(year>2000) 
+```  
+
+```{r echo=F, warning=F, message=F}
+p3=ggplot(full_gos11, aes(x=Julian, y=specdiv, col=community))+geom_point()+ylab("H' index")+
+  ggtitle("Goshutes (1983-2000)")+theme_classic()+stat_smooth(method="gam")+geom_vline(xintercept=260, lty=2)
+
+p4=ggplot(full_gos22, aes(x=Julian, y=specdiv, col=community))+geom_point()+ylab("H' index")+
+  ggtitle("Goshutes (2001-2018)")+theme_classic()+stat_smooth(method="gam")+geom_vline(xintercept=256, lty=2)
+
+p34=ggarrange(p3,p4, common.legend =T, ncol=1)
+annotate_figure(p34, top=text_grob("seasonal patterns of diversity",face = "bold", size = 14))
+```
+
+*Modelling Approach*  
+
+1.a. determine how to partition time-series to identify "historic" and "contemporary" conditions  
+
+1.b. GAMs with gamma distribution of response:diversity measure
+
+$$
+  Y \sim Gamma (\gamma, \delta)\\  
+  Y \sim Gamma \bigg (\frac {\mu^2} {\sigma}, \frac {\mu} {\sigma} \bigg) \\  
+  \mu = \alpha + \sum_{n=1}^{2}{f_n\left(T_n\right)} 
+$$
+
+2.  determine long-term trends in phenological responses (i.e., peak diversity dates) of different communities at different flyways (plot and model peak diversity dates over time(year))\
+
+```{r echo=F}
+p1=ggplot(full_gos1_peak, aes(y=Julian, x=year, col=community))+ylab("peak diversity date (Julian)")+
+  geom_line()+ggtitle("Goshutes (1983-2000)")+theme_classic()+geom_hline(yintercept = 260, lty=2)
+
+p2=ggplot(full_gos2_peak, aes(y=Julian, x=year, col=community))+geom_line()+ylab("peak diversity date (Julian)")+
+  ggtitle("Goshutes (2001-2018)")+theme_classic()+geom_hline(yintercept = 256, lty=2)
+
+p12=ggarrange(p1,p2, common.legend =T, ncol=1)
+annotate_figure(p12, top=text_grob("peak diversity dates",face = "bold", size = 14))
+```
+
+*Modelling Approach (linear model)*
+
+$$
+Y \sim Normal (\mu, \sigma^2)  \\  
+\mu = \alpha + \beta T_i
+$$\
+**B. Drivers of Community-Level Phenological Patterns**
+
+*Modelling Approach (hierarchical linear model)*
+
+$$
+Y \sim Normal (\mu, \sigma^2)  \\  
+\mu = \alpha_{sp} + \beta_{sp} T_i
+$$
+
+1.  examine trends in species-level phenology (plot and model mean passage date of different species in each community at different flyways)
+
+```{r include=F}
+gos=GosMts%>%select(-yr_tot,)%>%
+  pivot_longer(cols=3:27, names_to = "Species", values_to="Count")
+
+gos=gos%>%mutate(
+                 diet=case_when(Species=="AK" ~"bird",
+                                Species=="BE" ~"other",
+                                Species=="CH" ~"bird",
+                                Species=="BV" ~ "other",
+                                Species=="TV" ~"other",
+                                Species=="OS" ~"other",
+                                Species== "NH" ~"mammal",
+                                Species=="SS" ~"bird",
+                                Species=="NG"~ "bird",
+                                Species=="RS" ~"mammal",
+                                Species=="BW"~"mammal",
+                                Species=="RT" ~"mammal",
+                                Species=="RL" ~"mammal",
+                                Species=="SW"~"mammal",
+                                Species=="FH"~"mammal",
+                                Species=="GE"~"mammal",
+                                Species=="ML"~"bird",
+                                Species=="PG"~"bird",
+                                Species=="PR"~"mammal",
+                                Species=="MK"~"other"),
+                 mammals=case_when(Species=="AK" ~"34.6",
+                                      Species=="BE" ~"16",
+                                      Species=="CH" ~"23.3",
+                                      Species=="BV" ~ "92.5",
+                                      Species=="TV" ~"79.7",
+                                      Species=="OS" ~"0",
+                                      Species== "NH" ~"48.2",
+                                      Species=="SS" ~"2.72",
+                                      Species=="NG"~ "24.7",
+                                      Species=="RS" ~"39.5",
+                                      Species=="BW"~"42.2",
+                                      Species=="RT" ~"73.8",
+                                      Species=="RL" ~"85.3",
+                                      Species=="SW"~"48",
+                                      Species=="FH"~"81.9",
+                                      Species=="GE"~"80.6",
+                                      Species=="ML"~"1.28",
+                                      Species=="PG"~"5.11",
+                                      Species=="PR"~"42.3",
+                                      Species=="MK"~"2.22"),
+                 birds=case_when(Species=="AK" ~"13.5",
+                                  Species=="BE" ~"23.4",
+                                  Species=="CH" ~"71.4",
+                                  Species=="BV" ~ "7.5",
+                                  Species=="TV" ~"6.42",
+                                  Species=="OS" ~"0",
+                                  Species== "NH" ~"38.6",
+                                  Species=="SS" ~"89.4",
+                                  Species=="NG"~ "74.2",
+                                  Species=="RS" ~"6.43",
+                                  Species=="BW"~"16.5",
+                                  Species=="RT" ~"17",
+                                  Species=="RL" ~"9.02",
+                                  Species=="SW"~"10.6",
+                                  Species=="FH"~"9.89",
+                                  Species=="GE"~"17.8",
+                                  Species=="ML"~"90.3",
+                                  Species=="PG"~"93.5",
+                                  Species=="PR"~"45",
+                                  Species=="MK"~"0"))%>%
+  filter(!Species%in%c("UA", "UB", "UF", "UE", "UR"))
+
+gos$mammals=as.numeric(gos$mammals)
+gos$birds=as.numeric(gos$birds)
+str(gos)
+#annual totals per species
+
+gos_sp=gos%>%
+  group_by(year, Species, diet, mammals, birds)%>%
+  summarise(yr_tot=sum(Count))%>%
+  arrange(year)
+
+gos_sp$spcode=as.integer(as.factor(gos_sp$Species))
+
+#daily totals per species
+gos_sp_day=gos%>%
+  group_by(Species,diet, year, Julian)%>%
+  summarise(total=sum(Count))%>%
+  arrange(year)
+
+gos_mpd=gos_sp_day%>%group_by(Species, year)%>%mutate(cum_tot=cumsum(total), #get cumulative sum for each year
+                                  cum_pt=cum_tot/sum(total),#calculate % of daily count/annual count
+                                  MPD=if_else(cum_pt>=0.5,"1", "0"))%>% #flag rows with cumulative % >50%
+  group_by(Species, year)%>%filter(MPD==1)%>%slice_head(n=1)  #select rows where cum_pt is >50%
+```
+
+```{r echo=F, warning=F, message=F}
+#plot MPD trends
+ggplot(gos_mpd, aes(x=year, y=Julian, col=Species))+geom_point()+
+  stat_smooth(method="lm")+theme_classic()+facet_wrap(~Species)
+
+ggplot(gos_mpd, aes(x=year, y=Julian, col=Species))+geom_point()+
+  stat_smooth(method="lm")+theme_classic()+facet_wrap(~diet)
+```
+
+2.  examine abundance trends of different species (plot and model annual abundances of different species in each community at different flyways)
+
+```{r echo=F, warning=F, message=F}
+#plot annual totals trend per species
+ggplot(gos_sp, aes(x=year, y=log(yr_tot), col=Species))+geom_point()+
+  stat_smooth(method="lm")+theme_classic()+facet_wrap(~Species)
+
+ggplot(gos_sp, aes(x=year, y=log(yr_tot), col=Species))+geom_point()+
+  stat_smooth(method="lm")+theme_classic()+facet_wrap(~diet)
+```  
