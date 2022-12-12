@@ -2,11 +2,11 @@
 
 ### **Overview**
 
-Identifying large-scale patterns of phenological responses to climate change is a nontrivial task for ecologists because of the spatial and temporal heterogeneity of its impacts (Nijland et al., 2016; Wolkovich et al., 2014). Moreover, species in ecological communities or assemblages exhibit context-dependent associations with the environment. In fact, this is especially true for assemblages of migratory animals because changing conditions along their migratory routes over the course of their migration period can elicit different responses (Gill et al. 2019). While individual species responses can vary greatly, examining a measure of an emergent community property from the aggregation of these responses (e.g., shifts in timing; Walters et al. 2013) can be useful to assess climate change impacts on communities.
+Understanding and predicting phenological trends at multiple levels of biological organization is important to reflect the extent of climate change impacts on various aspects of biodiversity. However, identifying the links between the observed patterns of phenological responses across scales is a nontrivial task for ecologists because of the scale-dependent relationships between phenological measures and their underlying drivers (Park et al. 2021). Moreover, phenological responses of species in ecological communities or assemblages can vary depending on environmental context. This is especially true for assemblages of migratory animals because changing conditions along their migratory routes over the course of their migration period can elicit different responses (Gill et al. 2019). However, given limited financial and labor resources to monitor all species, using an aggregate metric to characterize large-scale phenological responses may be practical. Its interpretation, however, may not necessarily be straightforward given the variety of ways an emergent community property/ assemblage-response can arise.
 
-Assessing how individual species responses scale up to influence observed community-level patterns has been largely disregarded in phenological research (Steltzer and Post 2009). Specifically, the effects of shifts in community composition and structure on aggregate phenological responses have generally been overlooked (Walters et al. 2013). Usually, observed abundances of several species of migrating animals (e.g., birds) over the season are mainly used to develop species-specific phenological metrics. For example, bird migration can be described in terms of the arrival and departure date of migrants, and their passage windows (e.g., date when 50% or 95% of total migrants passed a site; (Denny et al., 2014; Farmer et al., 2007)). Using one or a few of these event-based phenological metrics, however, provide us with incomplete information about phenological dynamics (Knudsen et al. 2011) and their emergent properties. Thus, characterizing phenological trends of diversity measures, which summarize key ecological aspects of communities, can be useful in gaining a better understanding of the extent of climate change impacts on the temporal axis of biodiversity. Moreover, examining the inferences drawn when community-level phenological responses are taken at face value, and how they correspond with constituent species-level responses can be informative of the link between phenological shifts at the species and community level.
+Assessing how individual species responses scale up to influence observed community-level patterns has been largely disregarded in phenological research (Steltzer and Post 2009). In fact, the effects of shifts in community composition and structure on aggregate phenological responses have generally been overlooked (Walters et al. 2013). Oftentimes, it is assumed that shifts in community-level phenology are driven by shifts in the timing of the component species. However, shifts in the relative abundances of species that occur primarily during certain periods in the season (e.g., early growing plants or early arriving migrants) can drive phenological shifts as well(Walters et al. 2013). Thus, examining the inferences drawn when community-level phenological responses are taken at face value, and how they correspond with constituent species-level responses can be informative of the link between phenological shifts at the species and community level.
 
-In this study, I will use fall migration count data from hawk watch sites (with \> 10 years of monitoring data) that sample potentially unique flight corridors across three major flyways (east, west, central) in the contiguous US (at least 9 sites listed below) to examine community-level phenological responses. Specifically, I will characterize temporal trends in diversity measures (e.g., peak diversity dates, based on Shannon diversity index or H') for different assemblage groupings in each flyway (i.e.,all taxa: each hawk watchsite is considered an assemblage; functional groups based on diet: avian-eaters, mammal-eaters) to determine spatial patterns in community-level phenological responses. Then, I will determine whether temporal trends (e.g., advanced, delayed, or no shift) in community phenology correspond with the phenological trends of constituent species or were borne from shifts in community composition (e.g., shifts in relative abundance of early or late-season migrants, or of dominant species occurring earlier or later in the season, etc.; Fig. 1). By doing so, we can gain a more nuanced understanding of phenological shifts at multiple ecological levels of organization. ![](images/present13.png)
+In this study, I will use fall migration count data from hawk watch sites (with \> 10 years of monitoring data) that sample potentially unique flight corridors across three major flyways (east, west, central) in the contiguous US (at least 9 sites listed below) to examine community-level phenological responses. Specifically, for each representative watchsite, I will characterize temporal trends in the phenological metric (i.e., 10% passage date) that is biologically meaningful for monitoring the effects of trophic mismatch on fitness, to determine spatial patterns in community-level phenological responses. Then, I will calculate the relative contribution of shifts in species phenology and relative abundances (or compositon; Fig. 1) in driving assemblage-level phenological shifts using the metric developed by Walters et al. 2013 (Eqn. 1 below). By doing so, we can gain a more nuanced understanding of phenological shifts at multiple ecological levels of organization. ![](images/present13.png)
 
 Fig.1. Conceptual diagram of the roles of phenological (b) and compositional shifts (c) in driving community-level phenological repsonses.
 
@@ -34,13 +34,16 @@ c\. western flyway
 2.  Chelan Ridge (Washington)
 3.  Bridger Mountains (Montana)
 
-#### II. Data Analyses  
+#### II. Data Analyses
 
 Example site: Goshute Mts (Nevada)
 
 **A. Spatial patterns in community phenology trends**
 
-1.  determine within-season patterns of diversity of different communities at different flyways (plot and model diversity measure across the season/Julian date)
+1.  characterize phenological trends for each of the 9 hawk watchsites ("community-level")
+
+-   obtain dates when 10% of all migrants were counted\
+-   use breakpoint model to identify historical ($T_1$) and contemporary ($T_2$) periods.
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -53,102 +56,42 @@ require(ggpubr)
 ```
 
 ```{r include=F}
-#data manipulation####
 GosMts=read.csv("D:/Dropbox (UFL)/PhD-stuff/MigrationPhenology/data/GosMts.csv")
 GosMts[, 3:27][is.na(GosMts[, 3:27])] <- 0
 GosMts$Julian=as.POSIXlt(GosMts$Date)$yday 
 GosMts=GosMts%>%select(-TOTAL)%>%
-  mutate(yr_tot=rowSums(.[3:27], na.rm=T), year=year(Date), month=month(Date), date=day(Date))%>%
+  mutate(day_tot=rowSums(.[3:27], na.rm=T), year=year(Date), month=month(Date), date=day(Date))%>%
   filter(!year>2018, !Julian>308)
 
-avian_grp=GosMts%>%select(Date, Obs, SS, CH, NG, AK, ML, PG)%>%mutate(community="bird eaters")
-avian_grp=avian_grp%>%mutate(year=year(Date),specdiv=diversity(avian_grp[3:8], index="shannon"), specric=specnumber(avian_grp[3:8]))
-avian_grp$Julian=as.POSIXlt(avian_grp$Date)$yday 
+gos_10pd_site=GosMts%>%group_by(year)%>%mutate(cum_tot=cumsum(day_tot), 
+                                               cum_pt=cum_tot/sum(day_tot),
+                                               PD_10=if_else(cum_pt>=0.1,"1", "0"))%>% 
+  group_by(year)%>%filter(PD_10==1)%>%slice_head(n=1)%>%
+  select(year, Julian, cum_pt)
 
-mam_grp=GosMts%>%select(Date, Obs, NH, RS, BW, RT, RL, SW, FH, GE, PR)%>%mutate(community="mammal eaters")
-mam_grp=mam_grp%>%mutate(year=year(Date),specdiv=diversity(mam_grp[3:11], index="shannon"), specric=specnumber(mam_grp[3:11]))
-mam_grp$Julian=as.POSIXlt(mam_grp$Date)$yday 
+gos_h1=gos_10pd_site%>%filter(!year>1999)
+gos_h2=gos_10pd_site%>%filter(!year<2000)
+```
 
-gsw=GosMts%>%select(-UA, -UR, -UB, -UE, -UF)%>%
-  mutate(specdiv=diversity(GosMts[3:22], index="shannon"), specric=specnumber(GosMts[3:22]), community="all")
+```{r, echo=F, warning=F, message=F}
+s1=ggplot(gos_h1, aes(x=year, y=as.integer(Julian)))+geom_point(size=3)+ggtitle("Goshutes (1983-1999)")+ylab("10% passage date (early mgiration)")+
+ theme_classic()+geom_hline(yintercept=249, lty=2)
 
-g1=gsw%>%group_by(year)%>%filter(specdiv==max(specdiv))%>% slice_head(n=1)
-a1=avian_grp%>%mutate(year=year(Date))%>%group_by(year)%>%filter(specdiv==max(specdiv))%>% slice_head(n=1)
-m1=mam_grp%>%mutate(year=year(Date))%>%group_by(year)%>%filter(specdiv==max(specdiv))%>% slice_head(n=1)
+s2=ggplot(gos_h2, aes(x=year, y=as.integer(Julian)))+geom_point(size=3)+ggtitle("Goshutes (2000-2018)")+ylab("10% passage date (early mgiration)")+
+  theme_classic()+geom_hline(yintercept=250, lty=2)+ylim(246,255)
 
-mm1=m1%>%select(Date, Julian, year, specdiv, community)
-aa1=a1%>%select(Date, Julian, year, specdiv, community)
-gg1=g1%>%select(Date, Julian, year, specdiv, community)
-
-full_gos_peak=rbind(aa1,mm1,gg1)
-full_gos1_peak=full_gos_peak%>%filter(year<2001)
-full_gos2_peak=full_gos_peak%>%filter(year>2000)
-
-gg2=gsw%>%select(Date, Julian, year, specdiv, community)
-mm2=mam_grp%>%select(Date, Julian, year, specdiv, community)
-aa2=avian_grp%>%select(Date, Julian, year, specdiv, community)
-
-full_gos=rbind(gg2,mm2,aa2)
-
-full_gos11=full_gos%>%filter(year<2001)
-full_gos22=full_gos%>%filter(year>2000) 
+ggarrange(s1, s2)
 ```  
 
+**B. Contirbution of species-level responses to assemblage-level patterns**  
+
+1.  characterize phenological and abundance trends for each species during each of the time-periods
+
+-   obtain dates when 10% of all migrants were counted\
+-   obtain annual abundance counts for each species
+
 ```{r echo=F, warning=F, message=F}
-p3=ggplot(full_gos11, aes(x=Julian, y=specdiv, col=community))+geom_point()+ylab("H' index")+
-  ggtitle("Goshutes (1983-2000)")+theme_classic()+stat_smooth(method="gam")+geom_vline(xintercept=260, lty=2)
-
-p4=ggplot(full_gos22, aes(x=Julian, y=specdiv, col=community))+geom_point()+ylab("H' index")+
-  ggtitle("Goshutes (2001-2018)")+theme_classic()+stat_smooth(method="gam")+geom_vline(xintercept=256, lty=2)
-
-p34=ggarrange(p3,p4, common.legend =T, ncol=1)
-annotate_figure(p34, top=text_grob("seasonal patterns of diversity",face = "bold", size = 14))
-```
-
-*Modelling Approach*  
-
-1.a. determine how to partition time-series to identify "historic" and "contemporary" conditions  
-
-1.b. GAMs with gamma distribution of response:diversity measure
-
-$$
-  Y \sim Gamma (\gamma, \delta)\\  
-  Y \sim Gamma \bigg (\frac {\mu^2} {\sigma}, \frac {\mu} {\sigma} \bigg) \\  
-  \mu = \alpha + \sum_{n=1}^{2}{f_n\left(T_n\right)} 
-$$
-
-2.  determine long-term trends in phenological responses (i.e., peak diversity dates) of different communities at different flyways (plot and model peak diversity dates over time(year))\
-
-```{r echo=F}
-p1=ggplot(full_gos1_peak, aes(y=Julian, x=year, col=community))+ylab("peak diversity date (Julian)")+
-  geom_line()+ggtitle("Goshutes (1983-2000)")+theme_classic()+geom_hline(yintercept = 260, lty=2)
-
-p2=ggplot(full_gos2_peak, aes(y=Julian, x=year, col=community))+geom_line()+ylab("peak diversity date (Julian)")+
-  ggtitle("Goshutes (2001-2018)")+theme_classic()+geom_hline(yintercept = 256, lty=2)
-
-p12=ggarrange(p1,p2, common.legend =T, ncol=1)
-annotate_figure(p12, top=text_grob("peak diversity dates",face = "bold", size = 14))
-```
-
-*Modelling Approach (linear model)*
-
-$$
-Y \sim Normal (\mu, \sigma^2)  \\  
-\mu = \alpha + \beta T_i
-$$\
-**B. Drivers of Community-Level Phenological Patterns**
-
-*Modelling Approach (hierarchical linear model)*
-
-$$
-Y \sim Normal (\mu, \sigma^2)  \\  
-\mu = \alpha_{sp} + \beta_{sp} T_i
-$$
-
-1.  examine trends in species-level phenology (plot and model mean passage date of different species in each community at different flyways)
-
-```{r include=F}
-gos=GosMts%>%select(-yr_tot,)%>%
+gos=GosMts%>%select(-day_tot,)%>%
   pivot_longer(cols=3:27, names_to = "Species", values_to="Count")
 
 gos=gos%>%mutate(
@@ -214,9 +157,6 @@ gos=gos%>%mutate(
                                   Species=="MK"~"0"))%>%
   filter(!Species%in%c("UA", "UB", "UF", "UE", "UR"))
 
-gos$mammals=as.numeric(gos$mammals)
-gos$birds=as.numeric(gos$birds)
-str(gos)
 #annual totals per species
 
 gos_sp=gos%>%
@@ -232,28 +172,58 @@ gos_sp_day=gos%>%
   summarise(total=sum(Count))%>%
   arrange(year)
 
-gos_mpd=gos_sp_day%>%group_by(Species, year)%>%mutate(cum_tot=cumsum(total), #get cumulative sum for each year
+gos_10pd_sp=gos_sp_day%>%group_by(Species, year)%>%mutate(cum_tot=cumsum(total), #get cumulative sum for each year
                                   cum_pt=cum_tot/sum(total),#calculate % of daily count/annual count
-                                  MPD=if_else(cum_pt>=0.5,"1", "0"))%>% #flag rows with cumulative % >50%
-  group_by(Species, year)%>%filter(MPD==1)%>%slice_head(n=1)  #select rows where cum_pt is >50%
+                                  PD10=if_else(cum_pt>=0.1,"1", "0"))%>% #flag rows with cumulative % >50%
+  group_by(Species, year)%>%filter(PD10==1)%>%slice_head(n=1)  #select rows where cum_pt is >50%
+
 ```
 
 ```{r echo=F, warning=F, message=F}
-#plot MPD trends
-ggplot(gos_mpd, aes(x=year, y=Julian, col=Species))+geom_point()+
-  stat_smooth(method="lm")+theme_classic()+facet_wrap(~Species)
+ak_10pd=gos_10pd_sp%>%filter(Species=="AK", !year>1999)
+ak_10pd2=gos_10pd_sp%>%filter(Species=="AK", !year<2000)
 
-ggplot(gos_mpd, aes(x=year, y=Julian, col=Species))+geom_point()+
-  stat_smooth(method="lm")+theme_classic()+facet_wrap(~diet)
+ak1=ggplot(ak_10pd, aes(x=year, y=as.integer(Julian)))+geom_point()+ggtitle("American Kestrel (1983-1999)")+ylab("10% passage date (early migration)")+
+  theme_classic()+geom_hline(yintercept=243, lty=2)
+
+ak2=ggplot(ak_10pd2, aes(x=year, y=as.integer(Julian)))+geom_point()+ggtitle("American Kestrel (2000-2018)")+ylab("10% passage date (early mgiration)")+
+ theme_classic()+geom_hline(yintercept=242, lty=2)
+
+ggarrange(ak1,ak2)
 ```
 
-2.  examine abundance trends of different species (plot and model annual abundances of different species in each community at different flyways)
+```{r echo=F}
+gos_sp_tot=gos_sp%>%group_by(year)%>%mutate(overall_tot=sum(yr_tot))%>%arrange(year)
+aka=gos_sp_tot%>%filter(Species=="AK")%>%mutate(prop=yr_tot/overall_tot)
 
-```{r echo=F, warning=F, message=F}
-#plot annual totals trend per species
-ggplot(gos_sp, aes(x=year, y=log(yr_tot), col=Species))+geom_point()+
-  stat_smooth(method="lm")+theme_classic()+facet_wrap(~Species)
+aka1=aka%>%filter(!year>1999)
+aka2=aka%>%filter(!year<2000)
 
-ggplot(gos_sp, aes(x=year, y=log(yr_tot), col=Species))+geom_point()+
-  stat_smooth(method="lm")+theme_classic()+facet_wrap(~diet)
-```  
+akp1=ggplot(aka1, aes(x=year, y=prop))+geom_point()+
+  ggtitle("American Kestrel (1983-1999)")+
+  ylab("relative abundance")+
+  theme_classic()+geom_hline(yintercept=0.13, lty=2)
+
+akp2=ggplot(aka2, aes(x=year, y=prop))+geom_point()+
+  ggtitle("American Kestrel (2000-2018)")+
+  ylab("relative abundance")+
+  theme_classic()+geom_hline(yintercept=0.09, lty=2)
+
+ggarrange(akp1,akp2)
+```
+
+2.  calculate contribution of SPE(species phenology effect) and CE (composition/relative abundance effect)
+
+$$
+species phenology effect (SPE) =\frac{Σ relative abundance-weighted mean shift} {overall shift} (Eqn. 1)
+$$
+
+$$ 
+SPE= \frac {Σ^n_{i=1} (T_{2n} -T_{1n}) p_n} {T_{2a} -T_{1a}} (Eqn. 2)
+$$
+
+where $T_{2n}$ is the intercept after the breakpoint for species n, $T_{1n}$ is the intercept before the breakpoint for species n, $p_n$ is the relative abundance (proportion of individuals of species n over total), $T_{2a}$ is the intercept after the breakpoint for the community, and $T_{1a}$ is the intercept before the breakpoint for the community.
+
+$$
+CE=1-SPE (Eqn. 3)
+$$
