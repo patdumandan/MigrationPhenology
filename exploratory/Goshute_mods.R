@@ -133,11 +133,11 @@ gos_10pd_site$logJD=log(gos_10pd_site$Julian)
 gos_10pd_site$years= (gos_10pd_site$year - mean(gos_10pd_site$year))/(2 *sd(gos_10pd_site$year)) 
 
 #FOR CREATING SPLINES
-B1 = t(bs(gos_10pd_site$year, df=NULL, knots=NULL, degree=3, intercept = FALSE)) # creating the B-splines, degree=3 for cubic spline
+B1 = t(bs(gos_10pd_site$years, df=NULL, knots=NULL, degree=3, intercept = FALSE)) # creating the B-splines, degree=3 for cubic spline
 num_basis1 = nrow(B1)
 
 #FOR STAN MODEL
-dat_list2=list(N=length(gos_10pd_site$year),
+dat_list2=list(N=length(gos_10pd_site$years),
                pd_10=gos_10pd_site$logJD,
                years=gos_10pd_site$years,
                B1=B1,
@@ -169,4 +169,5 @@ plot(gos_10pd_site$Julian~gos_10pd_site$year, pch=19, ylab="10% passage date", x
 lines(smooth.spline(gos_10pd_site$year, Y_hat_med), col="blue")
 lines(smooth.spline(gos_10pd_site$year, Y_hat_lb), lty=2, col="red") #0.025
 lines(smooth.spline(gos_10pd_site$year, Y_hat_ub), lty=2, col="red") #0.975
+
 

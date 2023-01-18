@@ -11,7 +11,7 @@ data {
 parameters { 
   
   row_vector[num_basis1] b_raw; // smooth term for year
-  real a0; //intercept
+  real a0; //slope
   real<lower=0> sigma; //process error
   real <lower=0> tau; // error term for noncentered parameterization of spline coefficients (year)
 
@@ -25,7 +25,21 @@ transformed parameters {
   b = b_raw*tau;
   
  Y_hat=a0*years + to_vector(b*B1); //predictions estimated as parameters
+ 
  }
+ 
+// transformed parameters {
+  
+  //row_vector[num_basis1] b;
+  //vector[N] Y_hat;
+  
+  //b[1] = b_raw[1];
+  
+  //for (i in 2:num_basis1)
+    //b[i] = b[i-1] + b_raw[i]*tau; 
+
+// Y_hat=a0*years + to_vector(b*B1); //predictions estimated as parameters
+//}
 
 model { 
   
