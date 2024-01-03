@@ -95,12 +95,3 @@ sp11=sp_sum1%>%pivot_wider(names_from = period, values_from=u_pd)%>%
 
 phen_comm #community phenology shift (~3 days delay)
 
-#across all species contribution
-
-phen_sp_cont=sum(sp11$wgt_shift)/phen_comm
-
-#per species contribution
-
-phen_sp_cont_per_sp=sp11%>%
-  mutate(cont_sp=wgt_shift/sum(wgt_shift))
-
