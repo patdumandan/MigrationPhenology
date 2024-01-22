@@ -44,9 +44,17 @@ c2=comm_dat1%>%filter(year%in%c(1995:1999))
 mean(c1$pd_10)
 mean(c2$pd_10)
 
-#calculate phenological shift
 phen_comm=mean(c2$pd_10)-mean(c1$pd_10)
 
+#NOT from sp_table
+phen1_com=rep(212,100)
+phen2_com=rep(215,100)
+
+delta_P=phen2_com-phen1_com
+set.seed(10)
+hist(rpois(100,delta_P), xlab="shift (days)", main="aggregate-level shift")
+
+mean(delta_P) #3 days delay
 #visualize data####
 
 ggplot(comm_dat1, aes(x=year, y=pd_10))+geom_line()+
@@ -88,6 +96,7 @@ sp11=sp_sum1%>%
 
 phen_sp_cont=sum(sp11$wgt_shift)/phen_comm #2 or 200% delay in species-level phenology is contributing to the community-level shift
 
+phen_
 mean(sp11$wgt_shift)
 mean(sp11$shift)
 
@@ -157,11 +166,23 @@ phen_sp=mean(s2$pd_10)-mean(s1$pd_10)
 
 #calculate phenological shift (community level)
 phen_comm=mean(c2$pd_10)-mean(c1$pd_10)
+#NOT from sp_table
+phen1_com=rep(212,100)
+phen2_com=rep(215,100)
+
+delta_P=phen2_com-phen1_com
+set.seed(10)
+hist(rpois(100,delta_P), xlab="shift (days)", main="aggregate-level shift")
+
+mean(delta_P) #3 days delay
 
 ##relative abundance-weighted phenological shift####
 
 sp_dat21=sp_dat2%>%select(species, rel_abund)%>%
   unique(n=1)
+
+sp_sum2=sp_dat2%>%group_by(species, period)%>%
+  summarise(u_pd=mean(pd_10))%>%filter(!period=="TN")
 
 sp22=sp_sum2%>%
   pivot_wider(names_from = period, values_from=u_pd, names_sep = ".")%>%
@@ -174,5 +195,7 @@ sp22=sp_sum2%>%
 #relative abundance weighted
 
 phen_sp_cont=sum(sp22$wgt_shift)/phen_comm 
+phen_sp_cont2=sum(sp22$wgt_shift)/mean(delta_P)
+
 mean(sp22$wgt_shift)
 mean(sp22$shift)
