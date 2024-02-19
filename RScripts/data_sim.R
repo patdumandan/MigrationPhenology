@@ -56,6 +56,7 @@ mean(c2$pd_10)
 #calculate phenological shift
 phen_comm=mean(c2$pd_10)-mean(c1$pd_10)
 
+comm_phen=
 #visualize data####
 
 ggplot(comm_dat, aes(x=year, y=pd_10))+geom_line()+
@@ -106,12 +107,12 @@ phen_sp_cont_per_sp=sp11%>%
 
 #scenario 2####
 # assume that sp 1 is a late migrant, and is increasing their relative abundance
-# assume that sp 2 and 3 are not changing migration timing and abundances
+# assume that sp 2,3, and 4 are not changing migration timing and abundances
 
 
 sp_dat=data.frame(
   year=rep(1980:2000, each=nsp, length.out=nrep*nsp),
-  species=as.character(rep(1:3, length.out=nrep*nsp)))
+  species=as.character(rep(1:4, length.out=nrep*nsp)))
 
 sp_dat2=sp_dat%>%
   mutate(
@@ -163,7 +164,7 @@ ggplot(comm_dat2, aes(x=year, y=pd_10))+geom_line()+
 
 
 ggplot(sp_dat2, aes(x=year, y=pd_10))+geom_line()+
-  facet_wrap(~species)+
+  facet_wrap(~species)+geom_hline(yintercept=mean(comm_dat2$pd_10), lty=2)+
   annotate("rect",xmin=1980, xmax=1984, ymin=min(sp_dat2$pd_10), ymax=max(sp_dat2$pd_10), 
            color="red", alpha=0.1, fill="red")+theme_classic()+
   annotate("rect",xmin=1999, xmax=1995, ymin=min(sp_dat2$pd_10), ymax=max(sp_dat2$pd_10), 
