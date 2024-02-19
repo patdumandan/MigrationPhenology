@@ -31,7 +31,7 @@ hms_sp=HMS%>%
 #annual totals per species
 hms_sp_tot=hms_sp%>%
   group_by(YR, Species)%>%
-  summarise(sp_tot=sum(Count))
+  summarise(sp_tot=sum(Count))%>%filter(!YR<1983)
 
 #species relative abundances
 
@@ -314,3 +314,47 @@ ggplot(dat_phen)+geom_col(aes(x=shift, y=value))+ggtitle("Hawk Mountain")+
   geom_hline(yintercept = 0, linetype = 2)+
   scale_x_discrete(limits=c("overall", "species phenology", "composition"))+
   facet_wrap(~metric)+theme_classic()+abline(h=0)+ylab("shift (days)")
+
+#compositional shifts####
+hms_sp_tot=hms_sp%>%
+  group_by(YR, Species)%>%
+  summarise(sp_tot=sum(Count))%>%filter(!YR<1983)%>%
+  group_by(YR)%>%
+  mutate(rel_abund=sp_tot/sum(sp_tot))
+
+sp_abundance2=hms_sp_tot%>%
+  nest(-Species)%>%
+  mutate(model= list(brm(bf(rel_abund~ 1+s(YR)), 
+                         data=data, 
+                         iter=2500, 
+                         family=zero_inflated_beta(link = "logit", link_phi = "log", link_zi = "logit"),
+                         control=list(adapt_delta=0.99))),
+         preds=purrr::map(model, predict))%>%
+  unnest(preds)%>%as.data.frame()
+
+sp_relab=sp_abundance2%>%select(-data, -model)
+sp_rela_preds=as.data.frame(sp_relab$preds[,1])
+colnames(sp_rela_preds)[1]="mean_rela"
+
+sp_df_rela=cbind(sp_rela_preds, hms_sp_tot)%>%as.data.frame()%>%
+  mutate(period=case_when(YR%in%c(1983:1987) ~ "T1",
+                          YR%in%c(2014:2018) ~ "T2"))
+
+sp_df_rela_diff=sp_df_rela%>%
+  select(Species, mean_rela,period)%>%
+  filter(!is.na(period))%>%
+  group_by(Species, period)%>%
+  summarise(mean_rela=mean(mean_rela))%>%
+  pivot_wider(names_from = period, values_from=mean_rela, names_sep = ".")%>%
+  mutate(shift= T2-T1)
+
+#determine passage order of species (based on 50% passage date)
+hms_ord=hms_50pd_sp%>%group_by(Species)%>%
+  summarise(min_time=min(Julian))%>%arrange(min_time)
+
+ggplot(sp_df_rela_diff)+geom_col(aes(x=Species, y=shift))+theme_classic()+
+  geom_hline(yintercept = 0, linetype = 2)+ggtitle("Hawk Mountain")+
+  ylab("relative abundance shifts")+
+  scale_x_discrete(limits=c("RLHA", "BAEA", "BWHA", "AMKE", "OSPR", "PEFA","SSHA", "MERL",
+                            "NOHA", "COHA", "BLVU", "TUVU", "RSHA", "RTHA", "GOEA", "NOGO"))
+
