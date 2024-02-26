@@ -17,6 +17,7 @@ CapeMay=cape%>%
 
 CapeMay$Julian=as.POSIXlt(CapeMay$date)$yday
 CapeMay[, 2:16][is.na(CapeMay[, 2:16])] <- 0
+CapeMay=CapeMay%>%filter(!Julian<244, !Julian>333)
 
 #species-level counts
 cm_sp=CapeMay%>%select(-yr_tot)%>%
@@ -44,6 +45,11 @@ cm_sp_day=cm_sp%>%
   group_by(Species,YR, Julian)%>%
   summarise(total=sum(Count))%>%
   arrange(YR)
+
+cm_sp_freq=cm_sp_day%>% 
+  group_by(Julian)%>%
+  summarise(day_freq=n())%>%
+  arrange(Julian)
 
 #site-level####
 
@@ -295,9 +301,9 @@ segments(x0=2018, x1=2022,y0=mean(cm_mod90pred[24:28,]$pred_JD), y1=mean(cm_mod9
 
 #contributions####
 cm_datphen=matrix(c(10,50,90,
-                    1.16, 0.78,0.09, 
-                    2.89, 1.83,0.63,
-                    -1.73, -1.05, -0.57), nrow=3, ncol=4, byrow=FALSE, 
+                    1.05, 0.87,-0.06, 
+                    2.90, 1.63,0.59,
+                    -1.84, -0.76, -0.65), nrow=3, ncol=4, byrow=FALSE, 
                   dimnames= list(c("1", "2", "3"),
                                  c("metric","overall", "species phenology", "composition")))
 cm_dat_phen=as.data.frame(cm_datphen)%>%
@@ -354,3 +360,43 @@ ggplot(cm_sp_df_rela_diff)+geom_col(aes(x=Species, y=shift))+theme_classic()+
                    labels=c("BWHA", "OSPR", "AMKE", "MERL", "BAEA",
                             "PEFA", "SSHA", "COHA", "NOHA", "BLVU",
                             "TUVU", "NOGO", "GOEA", "RSHA", "RTHA"))
+
+#combine all species-level differences
+
+cm_sp_diff_rel=cm_sp_df_rela_diff%>%
+  select(Species, shift)%>%
+  rename(rela_shift=shift)
+
+cm_sp_diff10_time=cm_sp_diff10%>%
+  mutate(metric="10")%>%
+  rename(time_shift=shift)%>%
+  select(Species, time_shift, wgt_shift, metric)
+
+cm_sp_diff50_time=cm_sp_diff50%>%
+  mutate(metric="50")%>%
+  rename(time_shift=shift)%>%
+  select(Species, time_shift, wgt_shift, metric)
+
+cm_sp_diff90_time=cm_sp_diff90%>%
+  mutate(metric="90")%>%
+  rename(time_shift=shift)%>%
+  select(Species, time_shift, wgt_shift, metric)
+
+cm_diff_all=do.call("rbind", list(cm_sp_diff10_time, cm_sp_diff50_time, cm_sp_diff90_time))%>%
+  left_join(cm_sp_diff_rel, by="Species")
+
+cm_tot_ave=cm_sp_tot%>%
+  group_by(Species)%>%
+  summarise(ave_tot=mean(rel_abund))
+
+cm_diffs_all=left_join(cm_diff_all, cm_tot_ave, by="Species")%>%
+  mutate(species=case_when(Species=="AK" ~ "AMKE",
+                            Species=="TV" ~ "TUVU"))
+cmplot=ggplot(cm_diffs_all)+
+     geom_point(aes(x=time_shift, y=rela_shift, col=species, size=ave_tot))+
+     theme_classic()+geom_vline(xintercept = 0, linetype = 2)+
+     geom_hline(yintercept = 0, linetype = 2)+ggtitle("Cape May")+
+     ylab("relative abundance shifts")+facet_wrap(~metric)+xlab("phenological shift")+
+  scale_color_viridis_d()
+ 
+cmplot+guides(size=FALSE)

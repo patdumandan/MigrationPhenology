@@ -307,9 +307,9 @@ segments(x0=2018, x1=2022,y0=mean(qr_mod90pred[19:23,]$pred_JD), y1=mean(qr_mod9
 
 #contributions####
 qr_datphen=matrix(c(10,50,90,
-                    1.25,-1.28,14.70, 
-                    2.69,-1.73,-1.91,
-                    -1.43,0.45 ,16.60 ), nrow=3, ncol=4, byrow=FALSE, 
+                    0.72,-1.05,14.77, 
+                    2.80,-1.30,-1.95,
+                   -2.08, 0.25, 16.72), nrow=3, ncol=4, byrow=FALSE, 
                   dimnames= list(c("1", "2", "3"),
                                  c("metric","overall", "species phenology", "composition")))
 qr_dat_phen=as.data.frame(qr_datphen)%>%
@@ -362,4 +362,41 @@ ggplot(qr_sp_df_rela_diff)+geom_col(aes(x=Species, y=shift))+theme_classic()+
   ylab("relative abundance shifts")+
   scale_x_discrete(limits=c("COHA","BWHA","PEFA", "BLVU", "AMKE", "MERL",
                             "NOHA", "GOEA", "RTHA"))
+
+qr_sp_diff_rel=qr_sp_df_rela_diff%>%
+  select(Species, shift)%>%
+  rename(rela_shift=shift)
+
+qr_sp_diff10_time=qr_sp_diff10%>%
+  mutate(metric="10")%>%
+  rename(time_shift=shift)%>%
+  select(Species, time_shift, wgt_shift, metric)
+
+qr_sp_diff50_time=qr_sp_diff50%>%
+  mutate(metric="50")%>%
+  rename(time_shift=shift)%>%
+  select(Species, time_shift, wgt_shift, metric)
+
+qr_sp_diff90_time=qr_sp_diff90%>%
+  mutate(metric="90")%>%
+  rename(time_shift=shift)%>%
+  select(Species, time_shift, wgt_shift, metric)
+
+qr_diff_all=do.call("rbind", list(qr_sp_diff10_time, qr_sp_diff50_time, qr_sp_diff90_time))%>%
+  left_join(qr_sp_diff_rel, by="Species")
+
+qr_tot_ave=qr_sp_tot%>%
+  group_by(Species)%>%
+  summarise(ave_tot=mean(rel_abund))
+
+qr_diffs_all=left_join(qr_diff_all, qr_tot_ave, by="Species")
+
+qrplot=ggplot(qr_diffs_all)+
+  geom_point(aes(x=time_shift, y=rela_shift, col=Species, size=ave_tot))+
+  theme_classic()+geom_vline(xintercept = 0, linetype = 2)+
+  geom_hline(yintercept = 0, linetype = 2)+ggtitle("Quaker Ridge")+
+  ylab("relative abundance shifts")+facet_wrap(~metric)+xlab("phenological shift")+
+  scale_color_viridis_d()
+
+qrplot+guides(size=FALSE)
 

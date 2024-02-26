@@ -8,9 +8,6 @@ require(brms)
 #data manipulation####
 wach=read.csv("D:/Dropbox (UFL)/PhD-stuff/MigrationPhenology/data/WachusettMountain.csv")
 
-#combine baea and goea data
-#select 11 years after first count
-
 WachMt=wach%>%
   select(-Duration, -Observer, -UA, -UB, -UF, -UE, -X, -BV, -RL, -MK, -SW, -GE, -NG)%>%
   mutate(yr_tot=rowSums(.[2:13], na.rm=T),
@@ -19,6 +16,8 @@ WachMt=wach%>%
 
 WachMt$Julian=as.POSIXlt(WachMt$date)$yday
 WachMt[, 2:13][is.na(WachMt[, 2:13])] <- 0
+
+WachMt=WachMt%>%filter(!Julian<235, !Julian>320)
 
 #species-level counts
 wa_sp=WachMt%>%select(-yr_tot)%>%
@@ -355,3 +354,52 @@ ggplot(wa_sp_df_rela_diff)+geom_col(aes(x=Species, y=shift))+theme_classic()+
                    labels=c("BAEA", "RSHA", "RTHA", "BWHA", "COHA","MERL",
                             "PEFA", "NOHA", "OSPR", "SSHA", "AMKE", "TUVU"))
 
+wa_sp_diff_rel=wa_sp_df_rela_diff%>%
+  select(Species, shift)%>%
+  rename(rela_shift=shift)
+
+wa_sp_diff10_time=wa_sp_diff10%>%
+  mutate(metric="10")%>%
+  rename(time_shift=shift)%>%
+  select(Species, time_shift, wgt_shift, metric)
+
+wa_sp_diff50_time=wa_sp_diff50%>%
+  mutate(metric="50")%>%
+  rename(time_shift=shift)%>%
+  select(Species, time_shift, wgt_shift, metric)
+
+wa_sp_diff90_time=wa_sp_diff90%>%
+  mutate(metric="90")%>%
+  rename(time_shift=shift)%>%
+  select(Species, time_shift, wgt_shift, metric)
+
+wa_diff_all=do.call("rbind", list(wa_sp_diff10_time, wa_sp_diff50_time, wa_sp_diff90_time))%>%
+  left_join(wa_sp_diff_rel, by="Species")
+
+wa_tot_ave=wa_sp_tot%>%
+  group_by(Species)%>%
+  summarise(ave_tot=mean(rel_abund))
+
+wa_diffs_all=left_join(wa_diff_all, wa_tot_ave, by="Species")%>%
+  mutate(species=case_when(Species=="AK" ~ "AMKE",
+                           Species=="BE" ~ "BAEA",
+                           Species=="BW" ~ "BWHA",
+                           Species=="CH" ~ "COHA",
+                           Species=="ML" ~ "MERL",
+                           Species=="NH" ~ "NOHA",
+                           Species=="OS" ~ "OSPR",
+                           Species=="PG" ~ "PEFA",
+                           Species=="RS" ~ "RSHA",
+                           Species=="RT" ~ "RTHA",
+                           Species=="SS" ~ "SSHA",
+                           Species=="TV" ~ "TUVU"))
+
+
+waplot=ggplot(wa_diffs_all)+
+  geom_point(aes(x=time_shift, y=rela_shift, col=species, size=ave_tot))+
+  theme_classic()+geom_vline(xintercept = 0, linetype = 2)+
+  geom_hline(yintercept = 0, linetype = 2)+ggtitle("Wachusett Mountain")+
+  ylab("relative abundance shifts")+facet_wrap(~metric)+xlab("phenological shift")+
+  scale_color_viridis_d()
+
+waplot+guides(size=FALSE)

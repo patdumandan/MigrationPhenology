@@ -34,7 +34,6 @@ hms_sp_tot=hms_sp%>%
   summarise(sp_tot=sum(Count))%>%filter(!YR<1983)
 
 #species relative abundances
-
 hms_sp_ra=hms_sp_tot%>%
   group_by(Species)%>%
   summarise(ave_ct=mean(sp_tot))%>%
@@ -258,7 +257,6 @@ sp_diff90=left_join(sp_df90_diff, hms_sp_ra, by="Species")%>%
 sp90diff=sum(sp_diff90$wgt_shift)
 p90diff=mean(mod90pred[32:36,]$pred_JD)-mean(mod90pred[1:5,]$pred_JD)
 
-sp90diff/p90diff
 sp90diff/p90diff #proportion of phenological shift by species phenology
 1-(sp90diff/p90diff) #proportion of phenological shift by composition
 p90diff*(1-(sp90diff/p90diff)) #phenological shift (composition)
@@ -302,9 +300,9 @@ segments(x0=2014, x1=2018,y0=mean(m9pred[32:36,]$pred_JD), y1=mean(m9pred[32:36,
 
 #contributions####
 datphen=matrix(c(10,50,90,
-                 -0.44,-6.81,-5.28, 
-                 0.22,3.36,2.50,
-                 -0.66, -10.17, -7.79), nrow=3, ncol=4, byrow=FALSE, 
+                 -0.80,-6.68,-5.21, 
+                 0.12,3.23,2.41,
+                 -0.92, -9.91, -7.62), nrow=3, ncol=4, byrow=FALSE, 
                dimnames= list(c("1", "2", "3"),
                               c("metric","overall", "species phenology", "composition")))
 dat_phen=as.data.frame(datphen)%>%
