@@ -112,7 +112,7 @@ hms_ord50=hms_50pd_sp%>%group_by(Species)%>%
   summarise(min_time=min(Julian))%>%arrange(min_time)
 
 hm50_abund=ggplot(hm_sp_abundance_diffs)+geom_col(aes(x=Species, y=shift, fill=diet))+theme_classic()+
-  geom_hline(yintercept = 0, linetype = 2)+ggtitle("Hawk Mountain (50% passage date)")+
+  geom_hline(yintercept = 0, linetype = 2)+
   ylab("relative abundance shifts")+
   scale_x_discrete(limits=c("BWHA", "BAEA", "OSPR","AMKE","PEFA", "MERL",
                             "COHA","SSHA", "NOHA","BLVU", "TUVU", "RSHA",
@@ -147,5 +147,15 @@ hm90_phen=ggplot(hm_sp_df_diff90)+geom_col(aes(x=Species, y=shift, fill=diet))+t
                             "RSHA", "RTHA", "NOGO", "GOEA"))
 
 
-ggarrange(hm90_abund, hm90_phen, nrow=2, common.legend = TRUE, legend = "right")
+fig3c=ggarrange(hm50_abund, hm90_phen, nrow=2, common.legend = TRUE, legend = "right")
+annotate_figure(fig3c, top = text_grob("Hawk Mountain (90% passage date)", 
+                                       face = "bold", size = 14))
+
+fig3b=ggarrange(hm50_abund, hm50_phen, nrow=2, common.legend = TRUE, legend = "right")
+annotate_figure(fig3b, top = text_grob("Hawk Mountain (50% passage date)", 
+                                       face = "bold", size = 14))
+
+fig3a=ggarrange(hm50_abund, hm10_phen, nrow=2, common.legend = TRUE, legend = "right")
+annotate_figure(fig3a, top = text_grob("Hawk Mountain (10% passage date)", 
+                                       face = "bold", size = 14))
 

@@ -32,7 +32,10 @@ hms_sp=HMS%>%
 #annual totals per species
 hms_sp_tot=hms_sp%>%
   group_by(YR, Species)%>%
-  summarise(sp_tot=sum(Count))%>%filter(!YR<1990, !Species=="RLHA")
+  summarise(sp_tot=sum(Count))%>%
+  filter(!YR<1990, !Species=="RLHA")%>%
+  group_by(YR)%>%
+  mutate(rel_abund=sp_tot/sum(sp_tot))
 
 #species relative abundances
 hms_sp_ra=hms_sp_tot%>%
@@ -78,7 +81,7 @@ hm_mod10=brm(bf(Julian~ 1 + s(YR)),
           prior = priors,
           control=list(adapt_delta=0.99))
 
-saveRDS(hm_mod10, "hms_mod10.RDS")
+#saveRDS(hm_mod10, "hms_mod10.RDS")
 
 mod10pred=data.frame(predict(hm_mod10))
 colnames(mod10pred)[1]="pred_JD"
@@ -342,6 +345,8 @@ hm_sp_abundance=hms_sp_tot%>%
                                       prior=priors,
                                       control=list(adapt_delta=0.99))))
 
+#saveRDS(hm_sp_abundance,"HMS_composition.RDS")
+
 hm_sp_abundance$preds=lapply(hm_sp_abundance$model,predict)
 
 hm_sp_abundance_preds=hm_sp_abundance%>%select(-data, -model)%>%
@@ -389,7 +394,7 @@ hm_sp_abundance_diffs=hm_sp_abundance_diffs%>%
 
 #posterior predictions####
 ##site:10% PD####
-hpreds10=as.data.frame(posterior_predict(mod10))%>%
+hpreds10=as.data.frame(posterior_predict(hm_mod10))%>%
   mutate(iter=seq(1:5000))%>%
   pivot_longer(names_to="year", values_to="estimates", cols=1:29)%>%
   mutate(period=case_when(year%in%c("V1", "V2", "V3", "V4", "V5") ~ "T1",
@@ -405,9 +410,9 @@ mean(hpreds10$shift)
 length(which(hpreds10$shift<0))/length(hpreds10$shift)
 
 ##site:50% PD####
-hpreds50=as.data.frame(posterior_predict(mod50))%>%
+hpreds50=as.data.frame(posterior_predict(hm_mod50))%>%
   mutate(iter=seq(1:5000))%>%
-  pivot_longer(names_to="year", values_to="estimates", cols=1:36)%>%
+  pivot_longer(names_to="year", values_to="estimates", cols=1:29)%>%
   mutate(period=case_when(year%in%c("V1", "V2", "V3", "V4", "V5") ~ "T1",
                           year%in%c("V25", "V26", "V27", "V28", "V29") ~ "T2"))%>%
   filter(!is.na(period))%>%select(-year)%>%group_by(iter,period)%>%
@@ -421,9 +426,9 @@ mean(hpreds50$shift)
 length(which(hpreds50$shift<0))/length(hpreds50$shift)
 
 ##site:90% PD####
-hpreds90=as.data.frame(posterior_predict(mod90))%>%
+hpreds90=as.data.frame(posterior_predict(hm_mod90))%>%
   mutate(iter=seq(1:5000))%>%
-  pivot_longer(names_to="year", values_to="estimates", cols=1:36)%>%
+  pivot_longer(names_to="year", values_to="estimates", cols=1:29)%>%
   mutate(period=case_when(year%in%c("V1", "V2", "V3", "V4", "V5") ~ "T1",
                           year%in%c("V25", "V26", "V27", "V28", "V29") ~ "T2"))%>%
   filter(!is.na(period))%>%select(-year)%>%group_by(iter,period)%>%
@@ -437,7 +442,9 @@ mean(hpreds90$shift)
 length(which(hpreds90$shift<0))/length(hpreds90$shift)
 
 ##species: 10% PD####
-spph=sp_df_mod10%>%unnest(preds)%>%as.data.frame()%>%
+spph=sp_df_mod10%>%
+  mutate(preds=purrr::map(model, posterior_predict))%>%
+  unnest(preds)%>%as.data.frame()%>%
   group_by(Species)%>%
   mutate(iter=seq(1:5000))
 
@@ -468,11 +475,11 @@ spph_prob=spph3%>%
     prob_shift_delay=length(which(shift>0))/ length(shift))
 
 ##species: 50% PD####
-spph50=sp_df_mod50%>%unnest(preds)%>%as.data.frame()%>%
+spph50=sp_df_mod50%>%
+  mutate(preds=purrr::map(model, posterior_predict))%>%
+  unnest(preds)%>%as.data.frame()%>%
   group_by(Species)%>%
   mutate(iter=seq(1:5000))
-
-hms_splist=spab%>%select(Species, iter)
 
 spph50_df=as.data.frame(spph50$preds[,])
 
@@ -499,3 +506,64 @@ spph50_prob=spph50_dat%>%
     prob_shift_delay=length(which(shift>0))/ length(shift))
 
 ##species: 90% PD####
+spph90=sp_df_mod90%>%
+  mutate(preds=purrr::map(model, posterior_predict))%>%
+  unnest(preds)%>%as.data.frame()%>%
+  group_by(Species)%>%
+  mutate(iter=seq(1:5000))
+
+spph90_df=as.data.frame(spph90$preds[,])
+
+spph90_dat=cbind(spph90_df, hms_splist)%>%
+  pivot_longer(names_to="year", values_to="estimates", cols=1:29)%>%
+  mutate(period=case_when(year%in%c("V1", "V2", "V3", "V4", "V5") ~ "T1",
+                          year%in%c("V25", "V26", "V27", "V28", "V29") ~ "T2"))%>%
+  filter(!is.na(period))%>%select(-year)%>%group_by(Species,iter,period)%>%
+  summarise(mean_est=mean(estimates))%>%
+  pivot_wider(names_from=period, values_from = mean_est, names_sep = ".")%>%
+  mutate(shift=T2-T1)
+
+spph90_quant=spph90_dat%>%
+  group_by(Species)%>%
+  reframe(
+    q50=quantile(shift, 0.5),
+    qLB=quantile(shift, 0.025),
+    qUB=quantile(shift, 0.975))
+
+spph90_prob=spph90_dat%>%
+  group_by(Species)%>%
+  reframe(
+    prob_shift_advance=length(which(shift<0))/ length(shift),
+    prob_shift_delay=length(which(shift>0))/ length(shift))
+
+##composition####
+hm_abund=hm_sp_abundance%>%
+  mutate(preds=purrr::map(model, posterior_predict))%>%
+  unnest(preds)%>%as.data.frame()%>%select(-data, -model)%>%
+  group_by(Species)%>%
+  mutate(iter=seq(1:5000))
+
+
+hm_abund2=as.data.frame(hm_abund$preds[,])
+
+hm_abund3=cbind(hm_abund2, hms_splist)%>%
+  pivot_longer(names_to="year", values_to="estimates", cols=1:29)%>%
+  mutate(period=case_when(year%in%c("V1", "V2", "V3", "V4", "V5") ~ "T1",
+                          year%in%c("V25", "V26", "V27", "V28", "V29") ~ "T2"))%>%
+  filter(!is.na(period))%>%select(-year)%>%group_by(Species,iter,period)%>%
+  summarise(mean_est=mean(estimates))%>%
+  pivot_wider(names_from=period, values_from = mean_est, names_sep = ".")%>%
+  mutate(shift=T2-T1)
+
+hm_abund_quant=hm_abund3%>%
+  group_by(Species)%>%
+  reframe(
+    q0=quantile(shift, 0.5),
+    q1=quantile(shift, 0.025),
+    q2=quantile(shift, 0.975))
+
+hm_abund_prob=hm_abund3%>%
+  group_by(Species)%>%
+  reframe(
+    prob_shift_increase=length(which(shift<0))/ length(shift),
+    prob_shift_decrease=length(which(shift>0))/ length(shift))
