@@ -65,6 +65,8 @@ ylab("average daily count")+
     xmin = 226 , xmax = 348, y.position = 85,
     label = paste("HMS"), type="expression"
   )+
+  geom_vline(xintercept=271, col="gold", lty=2)+
+  geom_vline(xintercept=281, col="darkgreen", lty=2)+
   geom_bracket(
     xmin = 244 , xmax = 333, y.position = 76,
     label = paste("CM"), type="expression"
@@ -73,9 +75,9 @@ ylab("average daily count")+
 #Figure 2####
 
 hm_datphen=matrix(c(10,50,90,
-                    -0.54,-8.9,-3.74, 
-                    1.41,3.14,1.62,
-                    -1.95, -12.03, -5.35), nrow=3, ncol=4, byrow=FALSE, 
+                    -0.39,-8.9,-3.21, 
+                    1.27,3.14,1.65,
+                    -3.21, -12.03, -4.86), nrow=3, ncol=4, byrow=FALSE, 
                   dimnames= list(c("1", "2", "3"),
                                  c("metric","overall", "species phenology", "composition")))
 hm_dat_phen=as.data.frame(hm_datphen)%>%
@@ -86,76 +88,86 @@ ggplot(hm_dat_phen)+geom_col(aes(x=shift, y=value))+ggtitle("Hawk Mountain")+
   scale_x_discrete(limits=c("overall", "species phenology", "composition"))+
   facet_wrap(~metric)+theme_classic()+ylab("shift (days)")
 
+cm_datphen=matrix(c(10,50,90,
+                    3.37, 4.24,4.11, 
+                    3.93, 2.62,2.45,
+                    -0.55, 1.63, 1.66), nrow=3, ncol=4, byrow=FALSE, 
+                  dimnames= list(c("1", "2", "3"),
+                                 c("metric","overall", "species phenology", "composition")))
+cm_dat_phen=as.data.frame(cm_datphen)%>%
+  pivot_longer(cols=2:4, names_to = "shift", values_to="value" )
+
+ggplot(cm_dat_phen)+geom_col(aes(x=shift, y=value))+ggtitle("Cape May")+
+  geom_hline(yintercept = 0, linetype = 2)+
+  scale_x_discrete(limits=c("overall", "species phenology", "composition"))+
+  facet_wrap(~metric)+theme_classic()+ylab("shift (days)")
+
 #Figure 3####
 #3a
-hms_ord10=hms_10pd_sp%>%group_by(Species)%>%
-  summarise(min_time=min(Julian))%>%arrange(min_time)
 
-hm10_abund=ggplot(hm_sp_abundance_diffs)+geom_col(aes(x=Species, y=shift, fill=diet))+theme_classic()+
-  geom_hline(yintercept = 0, linetype = 2)+ggtitle("Hawk Mountain (10% passage date)")+
-  ylab("relative abundance shifts")+
-  scale_x_discrete(limits=c("BLVU", "BAEA", "AMKE", "OSPR","BWHA", "MERL",
-                            "NOHA","PEFA", "COHA","SSHA", "TUVU", "NOGO",
-                            "RSHA", "RTHA", "GOEA"))
+hm_sp_df_rela=left_join(hm_sp_abundance_meanpreds, hms_sp_tot)%>%as.data.frame()%>%
+  mutate(period=case_when(YR%in%c(1990:1994) ~ "T1",
+                          YR%in%c(2014:2018) ~ "T2"))
 
-hm10_phen=ggplot(hm_sp_df_diff10)+geom_col(aes(x=Species, y=shift, fill=diet))+theme_classic()+
-  geom_hline(yintercept = 0, linetype = 2)+
-  ylab("phenological shifts")+
-  scale_x_discrete(limits=c("BLVU", "BAEA", "AMKE", "OSPR","BWHA", "MERL",
-                            "NOHA","PEFA", "COHA","SSHA", "TUVU", "NOGO",
-                            "RSHA", "RTHA", "GOEA"))
+hm_sp_df_rela_diff=hm_sp_df_rela%>%
+  select(Species, mean_preds,period)%>%
+  filter(!is.na(period))%>%
+  group_by(Species, period)%>%
+  summarise(mean_rela=mean(mean_preds))%>%
+  pivot_wider(names_from = period, values_from=mean_rela, names_sep = ".")%>%
+  mutate(shift= T2-T1)%>%
+  mutate(diet=case_when(Species=="AMKE" ~ "insect",
+                        Species=="BWHA" ~ "mammal",
+                        Species=="OSPR" ~ "fish",
+                        Species=="MERL" ~ "bird",
+                        Species=="BAEA" ~ "fish",
+                        Species=="PEFA" ~ "bird",
+                        Species=="SSHA" ~ "bird",
+                        Species=="COHA" ~ "mammal",
+                        Species=="NOHA" ~ "mammal",
+                        Species=="BLVU" ~ "carrion",
+                        Species=="TUVU" ~ "carrion",
+                        Species=="NOGO" ~ "bird",
+                        Species=="GOEA" ~ "mammal",
+                        Species=="RSHA" ~ "mammal",
+                        Species=="RTHA" ~ "mammal"))
 
-ggarrange(hm10_abund, hm10_phen, nrow=2, common.legend = TRUE, legend = "right")
+hm_sp_diff_rel=hm_sp_df_rela_diff%>%
+  select(Species, shift, diet)%>%
+  rename(rela_shift=shift)
 
-#3b
-hms_ord50=hms_50pd_sp%>%group_by(Species)%>%
-  summarise(min_time=min(Julian))%>%arrange(min_time)
+hm_sp_diff10_time=hm_sp_diff10%>%
+  mutate(metric="10")%>%
+  rename(time_shift=shift)%>%
+  select(Species, time_shift, wgt_shift, metric)
 
-hm50_abund=ggplot(hm_sp_abundance_diffs)+geom_col(aes(x=Species, y=shift, fill=diet))+theme_classic()+
-  geom_hline(yintercept = 0, linetype = 2)+
-  ylab("relative abundance shifts")+
-  scale_x_discrete(limits=c("BWHA", "BAEA", "OSPR","AMKE","PEFA", "MERL",
-                            "COHA","SSHA", "NOHA","BLVU", "TUVU", "RSHA",
-                            "RTHA", "GOEA", "NOGO"))
+hm_sp_diff50_time=hm_sp_diff50%>%
+  mutate(metric="50")%>%
+  rename(time_shift=shift)%>%
+  select(Species, time_shift, wgt_shift, metric)
 
-hm50_phen=ggplot(hm_sp_df_diff50)+geom_col(aes(x=Species, y=shift, fill=diet))+theme_classic()+
-  geom_hline(yintercept = 0, linetype = 2)+
-  ylab("phenological shifts")+
-  scale_x_discrete(limits=c("BWHA", "BAEA", "OSPR","AMKE","PEFA", "MERL",
-                            "COHA","SSHA", "NOHA","BLVU", "TUVU", "RSHA",
-                            "RTHA", "GOEA", "NOGO"))
+hm_sp_diff90_time=hm_sp_diff90%>%
+  mutate(metric="90")%>%
+  rename(time_shift=shift)%>%
+  select(Species, time_shift, wgt_shift, metric)
 
+hm_diff_all=do.call("rbind", list(hm_sp_diff10_time, hm_sp_diff50_time, hm_sp_diff90_time))%>%
+  left_join(hm_sp_diff_rel, by="Species")
 
-ggarrange(hm50_abund, hm50_phen, nrow=2, common.legend = TRUE, legend = "right")
+hm_tot_ave=hms_sp_tot%>%
+  group_by(Species)%>%
+  summarise(ave_tot=mean(rel_abund))
 
-#3c
-hms_ord90=hms_90pd_sp%>%group_by(Species)%>%
-  summarise(min_time=min(Julian))%>%arrange(min_time)
+hm_diffs_all=left_join(hm_diff_all, hm_tot_ave, by="Species")%>%
+  mutate(col_grp=case_when(ave_tot > 0.1 ~ "a"))%>%
+  mutate(data_labels = ifelse(col_grp == "a", Species, NA))
 
-hm90_abund=ggplot(hm_sp_abundance_diffs)+geom_col(aes(x=Species, y=shift, fill=diet))+theme_classic()+
-  geom_hline(yintercept = 0, linetype = 2)+ggtitle("Hawk Mountain (90% passage date)")+
-  ylab("relative abundance shifts")+
-  scale_x_discrete(limits=c("BWHA", "OSPR","AMKE","PEFA", "MERL",
-                            "SSHA", "COHA", "TUVU", "NOHA", "BAEA","BLVU",
-                            "RSHA", "RTHA", "NOGO", "GOEA"))
+hmplot=ggplot(hm_diffs_all, aes(x=time_shift, y=rela_shift, col=diet, size=ave_tot))+
+  geom_point()+facet_wrap(~metric)+
+  geom_text(label=hm_diffs_all$data_labels, size=3, col="black", hjust = 1.8)+
+  theme_classic()+geom_vline(xintercept = 0, linetype = 2)+
+  geom_hline(yintercept = 0, linetype = 2)+ggtitle("Hawk Mountain")+
+  ylab("relative abundance shifts")+xlab("phenological shifts")+
+  scale_color_viridis_d()
 
-hm90_phen=ggplot(hm_sp_df_diff90)+geom_col(aes(x=Species, y=shift, fill=diet))+theme_classic()+
-  geom_hline(yintercept = 0, linetype = 2)+
-  ylab("phenological shifts")+
-  scale_x_discrete(limits=c("BWHA", "OSPR","AMKE","PEFA", "MERL",
-                            "SSHA", "COHA", "TUVU", "NOHA", "BAEA","BLVU",
-                            "RSHA", "RTHA", "NOGO", "GOEA"))
-
-
-fig3c=ggarrange(hm50_abund, hm90_phen, nrow=2, common.legend = TRUE, legend = "right")
-annotate_figure(fig3c, top = text_grob("Hawk Mountain (90% passage date)", 
-                                       face = "bold", size = 14))
-
-fig3b=ggarrange(hm50_abund, hm50_phen, nrow=2, common.legend = TRUE, legend = "right")
-annotate_figure(fig3b, top = text_grob("Hawk Mountain (50% passage date)", 
-                                       face = "bold", size = 14))
-
-fig3a=ggarrange(hm50_abund, hm10_phen, nrow=2, common.legend = TRUE, legend = "right")
-annotate_figure(fig3a, top = text_grob("Hawk Mountain (10% passage date)", 
-                                       face = "bold", size = 14))
-
+hmplot+guides(size=FALSE)

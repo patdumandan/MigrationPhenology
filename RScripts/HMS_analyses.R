@@ -235,7 +235,7 @@ colnames(hm_mod50_sp_meanpreds)[1]="mean_preds"
 
 main_dat50=hms_50pd_sp%>%select(Species, YR, Julian)
 
-hm_sp_df_all50=cbind(hm_mod50_sp_meanpreds, main_dat50)%>%as.data.frame()%>%
+hm_sp_df_all50=cbind(hm_mod50_sp_meanpreds, main_dat)%>%as.data.frame()%>%
   mutate(period=case_when(YR%in%c(1990:1994) ~ "T1",
                           YR%in%c(2014:2018) ~ "T2"))
 
@@ -296,7 +296,7 @@ colnames(hm_mod90_sp_meanpreds)[1]="mean_preds"
 
 main_dat90=hms_90pd_sp%>%select(Species, YR, Julian)
 
-hm_sp_df_all90=cbind(hm_mod90_sp_meanpreds, main_dat90)%>%as.data.frame()%>%
+hm_sp_df_all90=cbind(hm_mod90_sp_meanpreds, main_dat)%>%as.data.frame()%>%
   mutate(period=case_when(YR%in%c(1990:1994) ~ "T1",
                           YR%in%c(2014:2018) ~ "T2"))
 
