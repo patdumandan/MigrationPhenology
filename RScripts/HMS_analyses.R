@@ -235,7 +235,7 @@ colnames(hm_mod50_sp_meanpreds)[1]="mean_preds"
 
 main_dat50=hms_50pd_sp%>%select(Species, YR, Julian)
 
-hm_sp_df_all50=cbind(hm_mod50_sp_meanpreds, main_dat)%>%as.data.frame()%>%
+hm_sp_df_all50=cbind(hm_mod50_sp_meanpreds, main_dat10)%>%as.data.frame()%>%
   mutate(period=case_when(YR%in%c(1990:1994) ~ "T1",
                           YR%in%c(2014:2018) ~ "T2"))
 
@@ -296,7 +296,7 @@ colnames(hm_mod90_sp_meanpreds)[1]="mean_preds"
 
 main_dat90=hms_90pd_sp%>%select(Species, YR, Julian)
 
-hm_sp_df_all90=cbind(hm_mod90_sp_meanpreds, main_dat)%>%as.data.frame()%>%
+hm_sp_df_all90=cbind(hm_mod90_sp_meanpreds, main_dat10)%>%as.data.frame()%>%
   mutate(period=case_when(YR%in%c(1990:1994) ~ "T1",
                           YR%in%c(2014:2018) ~ "T2"))
 
@@ -390,7 +390,6 @@ hm_sp_abundance_diffs=hm_sp_abundance_diffs%>%
   summarise(mean_pd=mean(mean_preds))%>%
   pivot_wider(names_from = period, values_from=mean_pd, names_sep = ".")%>%
   mutate(shift= T2-T1)
-
 
 #posterior predictions####
 ##site:10% PD####
@@ -565,5 +564,5 @@ hm_abund_quant=hm_abund3%>%
 hm_abund_prob=hm_abund3%>%
   group_by(Species)%>%
   reframe(
-    prob_shift_increase=length(which(shift<0))/ length(shift),
-    prob_shift_decrease=length(which(shift>0))/ length(shift))
+    prob_shift_increase=length(which(shift>0))/ length(shift),
+    prob_shift_decrease=length(which(shift<0))/ length(shift))

@@ -498,59 +498,6 @@ cm_sp_abundance_diffs=cm_sp_abundance_diffs%>%
   pivot_wider(names_from = period, values_from=mean_pd, names_sep = ".")%>%
   mutate(shift= T2-T1)
 
-#determine passage order of species (based on 50% passage date)
-cm_ord10=cm_10pd_sp%>%group_by(Species)%>%
-  summarise(min_time=min(Julian))%>%arrange(min_time)
-
-cm10=ggplot(cm_sp_df_rela_diff)+geom_col(aes(x=Species, y=shift))+theme_classic()+
-  geom_hline(yintercept = 0, linetype = 2)+ggtitle("Cape May")+
-  ylab("relative abundance shifts")+
-  scale_x_discrete(limits=c("BW","OS","AK", "ML", "BE", "PG",
-                            "SS", "CH", "NH", "BV", "TV", "NG",
-                            "GE", "RS", "RT"),
-                   labels=c("BWHA", "OSPR", "AMKE", "MERL", "BAEA",
-                            "PEFA", "SSHA", "COHA", "NOHA", "BLVU",
-                            "TUVU", "NOGO", "GOEA", "RSHA", "RTHA"))
-
-#combine all species-level differences
-cm_sp_diff_rel=cm_sp_df_rela_diff%>%
-  select(Species, shift)%>%
-  rename(rela_shift=shift)
-
-cm_sp_diff10_time=cm_sp_diff10%>%
-  mutate(metric="10")%>%
-  rename(time_shift=shift)%>%
-  select(Species, time_shift, wgt_shift, metric)
-
-cm_sp_diff50_time=cm_sp_diff50%>%
-  mutate(metric="50")%>%
-  rename(time_shift=shift)%>%
-  select(Species, time_shift, wgt_shift, metric)
-
-cm_sp_diff90_time=cm_sp_diff90%>%
-  mutate(metric="90")%>%
-  rename(time_shift=shift)%>%
-  select(Species, time_shift, wgt_shift, metric)
-
-cm_diff_all=do.call("rbind", list(cm_sp_diff10_time, cm_sp_diff50_time, cm_sp_diff90_time))%>%
-  left_join(cm_sp_diff_rel, by="Species")
-
-cm_tot_ave=cm_sp_tot%>%
-  group_by(Species)%>%
-  summarise(ave_tot=mean(rel_abund))
-
-cm_diffs_all=left_join(cm_diff_all, cm_tot_ave, by="Species")%>%
-  mutate(species=case_when(Species=="AK" ~ "AMKE",
-                            Species=="TV" ~ "TUVU"))
-cmplot=ggplot(cm_diffs_all)+
-     geom_point(aes(x=time_shift, y=rela_shift, col=species, size=ave_tot))+
-     theme_classic()+geom_vline(xintercept = 0, linetype = 2)+
-     geom_hline(yintercept = 0, linetype = 2)+ggtitle("Cape May")+
-     ylab("relative abundance shifts")+facet_wrap(~metric)+xlab("phenological shift")+
-  scale_color_viridis_d()
- 
-cmplot+guides(size=FALSE)
-
 #posterior predictions####
 
 ##site: 10% PD####
@@ -758,7 +705,6 @@ cm90_spph_prob=cmall90_spph3%>%
     prob_shift_delay=length(which(shift>0))/ length(shift))
 
 ##composition####
-##composition####
 cm_abund=cm_sp_abundance%>%filter(!Species=="NG")%>%
   mutate(preds=purrr::map(model, posterior_predict))%>%
   unnest(preds)%>%as.data.frame()%>%select(-data, -model)%>%
@@ -804,5 +750,5 @@ cm_abund_quant=cmall_abund3%>%
 cm_abund_prob=cmall_abund3%>%
   group_by(Species)%>%
   reframe(
-    prob_shift_increase=length(which(shift<0))/ length(shift),
-    prob_shift_decrease=length(which(shift>0))/ length(shift))
+    prob_shift_increase=length(which(shift>0))/ length(shift),
+    prob_shift_decrease=length(which(shift<0))/ length(shift))

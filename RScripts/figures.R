@@ -171,3 +171,86 @@ hmplot=ggplot(hm_diffs_all, aes(x=time_shift, y=rela_shift, col=diet, size=ave_t
   scale_color_viridis_d()
 
 hmplot+guides(size=FALSE)
+
+cm_sp_df_rela=right_join(cm_sp_abundance_meanpreds, cm_sp_tot)%>%as.data.frame()%>%
+  mutate(period=case_when(YR%in%c(1990:1994) ~ "T1",
+                          YR%in%c(2014:2018) ~ "T2"))
+
+cm_sp_df_rela_diff=cm_sp_df_rela%>%
+  select(Species, mean_preds,period)%>%
+  filter(!is.na(period))%>%
+  group_by(Species, period)%>%
+  summarise(mean_rela=mean(mean_preds))%>%
+  pivot_wider(names_from = period, values_from=mean_rela, names_sep = ".")%>%
+  mutate(shift= T2-T1)%>%
+  mutate(diet=case_when(Species=="AK" ~ "insect",
+                        Species=="BW" ~ "mammal",
+                        Species=="OS" ~ "fish",
+                        Species=="ML" ~ "bird",
+                        Species=="BE" ~ "fish",
+                        Species=="PG" ~ "bird",
+                        Species=="SS" ~ "bird",
+                        Species=="CH" ~ "mammal",
+                        Species=="NH" ~ "mammal",
+                        Species=="BV" ~ "carrion",
+                        Species=="TV" ~ "carrion",
+                        Species=="NG" ~ "bird",
+                        Species=="GE" ~ "mammal",
+                        Species=="RS" ~ "mammal",
+                        Species=="RT" ~ "mammal"))%>%
+  mutate(spcode=case_when(Species=="AK" ~ "AMKE",
+                          Species=="BW" ~ "BWHA",
+                          Species=="OS" ~ "OSPR",
+                          Species=="ML" ~ "MERL",
+                          Species=="BE" ~ "BAEA",
+                          Species=="PG" ~ "PEFA",
+                          Species=="SS" ~ "SSHA",
+                          Species=="CH" ~ "COHA",
+                          Species=="NH" ~ "NOHA",
+                          Species=="BV" ~ "BLVU",
+                          Species=="TV" ~ "TUVU",
+                          Species=="NG" ~ "NOGO",
+                          Species=="GE" ~ "GOEA",
+                          Species=="RS" ~ "RSHA",
+                          Species=="RT" ~ "RTHA"))
+
+cm_sp_diff_rel=cm_sp_df_rela_diff%>%
+  select(Species, spcode, shift, diet)%>%
+  rename(rela_shift=shift)
+
+cm_sp_diff10_time=cm_sp_diff10%>%
+  mutate(metric="10")%>%
+  rename(time_shift=shift)%>%
+  select(Species, time_shift, wgt_shift, metric)
+
+cm_sp_diff50_time=cm_sp_diff50%>%
+  mutate(metric="50")%>%
+  rename(time_shift=shift)%>%
+  select(Species, time_shift, wgt_shift, metric)
+
+cm_sp_diff90_time=cm_sp_diff90%>%
+  mutate(metric="90")%>%
+  rename(time_shift=shift)%>%
+  select(Species, time_shift, wgt_shift, metric)
+
+cm_diff_all=do.call("rbind", list(cm_sp_diff10_time, cm_sp_diff50_time, cm_sp_diff90_time))%>%
+  inner_join(cm_sp_diff_rel, by="Species")
+
+cm_tot_ave=cm_sp_tot%>%
+  group_by(Species)%>%
+  summarise(ave_tot=mean(rel_abund))
+
+cm_diffs_all=left_join(cm_diff_all, cm_tot_ave, by="Species")%>%
+  mutate(col_grp=case_when(ave_tot > 0.1 ~ "a"))%>%
+  mutate(data_labels = ifelse(col_grp == "a", spcode, NA))
+
+cmplot=ggplot(cm_diffs_all, aes(x=time_shift, y=rela_shift, col=diet, size=ave_tot))+
+  geom_point()+facet_wrap(~metric)+
+  geom_text(label=cm_diffs_all$data_labels, size=3, col="black", hjust = 1.8)+
+  theme_classic()+geom_vline(xintercept = 0, linetype = 2)+
+  geom_hline(yintercept = 0, linetype = 2)+ggtitle("Cape May")+
+  ylab("relative abundance shifts")+xlab("phenological shifts")+
+  scale_color_viridis_d()
+
+cmplot+guides(size=FALSE)
+
