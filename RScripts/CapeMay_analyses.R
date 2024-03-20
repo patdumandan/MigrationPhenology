@@ -219,7 +219,7 @@ cm_sp_diff10=left_join(cm_sp_df_diff10, cm_sp_ra, by="Species")%>%
                           Species=="BE" ~ "fish",
                           Species=="PG" ~ "bird",
                           Species=="SS" ~ "bird",
-                          Species=="CH" ~ "mammal",
+                          Species=="CH" ~ "bird",
                           Species=="NH" ~ "mammal",
                           Species=="BV" ~ "carrion",
                           Species=="TV" ~ "carrion",
@@ -305,7 +305,7 @@ cm_sp_diff50=left_join(cm_sp_df_diff50, cm_sp_ra, by="Species")%>%
                         Species=="BE" ~ "fish",
                         Species=="PG" ~ "bird",
                         Species=="SS" ~ "bird",
-                        Species=="CH" ~ "mammal",
+                        Species=="CH" ~ "bird",
                         Species=="NH" ~ "mammal",
                         Species=="BV" ~ "carrion",
                         Species=="TV" ~ "carrion",
@@ -530,7 +530,7 @@ cpreds50=as.data.frame(posterior_predict(cm_mod50))%>%
 quantile(cpreds50$shift, probs=c(0.025,0.975))
 mean(cpreds50$shift)
 
-length(which(cpreds50$shift<0))/length(cpreds10$shift)
+length(which(cpreds50$shift<0))/length(cpreds50$shift)
 
 ##site: 90% PD####
 cpreds90=as.data.frame(posterior_predict(cm_mod90))%>%
