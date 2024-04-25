@@ -28,13 +28,14 @@ qk=qr%>%
          SSHA=rowSums(.[57:60], na.rm=TRUE),
          TUVU=rowSums(.[62:64], na.rm=TRUE))%>%
   select(Date,year, month, day, Duration, Observer, 
-         AMKE, BLVU, BWHA, COHA, GOEA, MERL, NOHA, PEFA,
+         AMKE, BLVU, BWHA, COHA, GOEA, MERL, NOHA, PEFA,TUVU,OSPR,
+         SSHA,
           RTHA)%>%
   mutate(TOTAL=rowSums(.[7:15], na.rm=T))
 
 qk$Julian=as.POSIXlt(qk$Date)$yday
 
-QR=qk%>%filter(!year<2000, !Julian<231, !Julian >323)
+QR=qk%>%filter(!year<2000, !Julian<231, !Julian >332)
 
 #species-level counts#
 qr_sp=QR%>%select(-TOTAL)%>%
@@ -149,6 +150,50 @@ qr_m9pred=cbind(qr_90pd_site, qr_mod90pred)
 
 mean(qr_mod90pred[19:23,]$pred_JD)-mean(qr_mod90pred[1:5,]$pred_JD) 
 mean(qr_90pd_site[19:23,]$Julian)-mean(qr_90pd_site[1:5,]$Julian) 
+
+#phenological shifts####
+qpreds10=as.data.frame(posterior_predict(qr_mod10))%>%
+  mutate(iter=seq(1:5000))%>%
+  pivot_longer(names_to="year", values_to="estimates", cols=1:23)%>%
+  mutate(period=case_when(year%in%c("V1", "V2", "V3", "V4", "V5") ~ "T1",
+                          year%in%c("V19", "V20", "V21", "V22", "V23") ~ "T2"))%>%
+  filter(!is.na(period))%>%select(-year)%>%group_by(iter,period)%>%
+  summarise(mean_est=mean(estimates))%>%
+  pivot_wider(names_from=period, values_from = mean_est, names_sep = ".")%>%
+  mutate(shift=T2-T1)
+
+quantile(qpreds10$shift, probs=c(0.025,0.975))
+mean(qpreds10$shift)
+length(which(qpreds10$shift>0))/length(qpreds10$shift)
+
+qpreds50=as.data.frame(posterior_predict(qr_mod50))%>%
+  mutate(iter=seq(1:5000))%>%
+  pivot_longer(names_to="year", values_to="estimates", cols=1:23)%>%
+  mutate(period=case_when(year%in%c("V1", "V2", "V3", "V4", "V5") ~ "T1",
+                          year%in%c("V19", "V20", "V21", "V22", "V23") ~ "T2"))%>%
+  filter(!is.na(period))%>%select(-year)%>%group_by(iter,period)%>%
+  summarise(mean_est=mean(estimates))%>%
+  pivot_wider(names_from=period, values_from = mean_est, names_sep = ".")%>%
+  mutate(shift=T2-T1)
+
+quantile(qpreds50$shift, probs=c(0.025,0.975))
+mean(qpreds50$shift)
+length(which(qpreds50$shift>0))/length(qpreds50$shift)
+
+qpreds90=as.data.frame(posterior_predict(qr_mod90))%>%
+  mutate(iter=seq(1:5000))%>%
+  pivot_longer(names_to="year", values_to="estimates", cols=1:23)%>%
+  mutate(period=case_when(year%in%c("V1", "V2", "V3", "V4", "V5") ~ "T1",
+                          year%in%c("V19", "V20", "V21", "V22", "V23") ~ "T2"))%>%
+  filter(!is.na(period))%>%select(-year)%>%group_by(iter,period)%>%
+  summarise(mean_est=mean(estimates))%>%
+  pivot_wider(names_from=period, values_from = mean_est, names_sep = ".")%>%
+  mutate(shift=T2-T1)
+
+quantile(qpreds90$shift, probs=c(0.025,0.975))
+mean(qpreds90$shift)
+length(which(qpreds90$shift>0))/length(qpreds90$shift)
+
 
 #species-level####
 

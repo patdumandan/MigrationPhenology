@@ -135,6 +135,49 @@ wa_m9pred=cbind(wa_90pd_site, wa_mod90pred)
 mean(wa_mod90pred[17:21,]$pred_JD)-mean(wa_mod90pred[1:5,]$pred_JD) #-7.9
 mean(wa_90pd_site[17:21,]$Julian)-mean(wa_90pd_site[1:5,]$Julian) #-7.9
 
+#phenological shifts####
+wpreds10=as.data.frame(posterior_predict(wa_mod10))%>%
+  mutate(iter=seq(1:5000))%>%
+  pivot_longer(names_to="year", values_to="estimates", cols=1:21)%>%
+  mutate(period=case_when(year%in%c("V1", "V2", "V3", "V4", "V5") ~ "T1",
+                          year%in%c("V17", "V18", "V19", "V20", "V21") ~ "T2"))%>%
+  filter(!is.na(period))%>%select(-year)%>%group_by(iter,period)%>%
+  summarise(mean_est=mean(estimates))%>%
+  pivot_wider(names_from=period, values_from = mean_est, names_sep = ".")%>%
+  mutate(shift=T2-T1)
+
+quantile(wpreds10$shift, probs=c(0.025,0.975))
+mean(wpreds10$shift)
+length(which(wpreds10$shift>0))/length(wpreds10$shift)
+
+wpreds50=as.data.frame(posterior_predict(wa_mod50))%>%
+  mutate(iter=seq(1:5000))%>%
+  pivot_longer(names_to="year", values_to="estimates", cols=1:21)%>%
+  mutate(period=case_when(year%in%c("V1", "V2", "V3", "V4", "V5") ~ "T1",
+                          year%in%c("V17", "V18", "V19", "V20", "V21") ~ "T2"))%>%
+  filter(!is.na(period))%>%select(-year)%>%group_by(iter,period)%>%
+  summarise(mean_est=mean(estimates))%>%
+  pivot_wider(names_from=period, values_from = mean_est, names_sep = ".")%>%
+  mutate(shift=T2-T1)
+
+quantile(wpreds50$shift, probs=c(0.025,0.975))
+mean(wpreds50$shift)
+length(which(wpreds50$shift>0))/length(wpreds50$shift)
+
+wpreds90=as.data.frame(posterior_predict(wa_mod90))%>%
+  mutate(iter=seq(1:5000))%>%
+  pivot_longer(names_to="year", values_to="estimates", cols=1:21)%>%
+  mutate(period=case_when(year%in%c("V1", "V2", "V3", "V4", "V5") ~ "T1",
+                          year%in%c("V17", "V18", "V19", "V20", "V21") ~ "T2"))%>%
+  filter(!is.na(period))%>%select(-year)%>%group_by(iter,period)%>%
+  summarise(mean_est=mean(estimates))%>%
+  pivot_wider(names_from=period, values_from = mean_est, names_sep = ".")%>%
+  mutate(shift=T2-T1)
+
+quantile(wpreds90$shift, probs=c(0.025,0.975))
+mean(wpreds90$shift)
+length(which(wpreds90$shift>0))/length(wpreds90$shift)
+
 #species-level####
 
 ##10% PD####
@@ -146,7 +189,7 @@ wa_sp_df_mod10=wa_10pd_sp%>%
                          iter=2500, family=poisson(), 
                          prior=priors,
                          control=list(adapt_delta=0.99))),
-         preds=purrr::map(model, predict))%>%
+         preds=purrr::map(model, posterior_predict))%>%
   unnest(preds)%>%as.data.frame()
 
 wa_sp_df_res10=wa_sp_df_mod10%>%select(-data, -model)
@@ -403,3 +446,39 @@ waplot=ggplot(wa_diffs_all)+
   scale_color_viridis_d()
 
 waplot+guides(size=FALSE)
+
+#POSTERIOR COMPOSITION####
+wa_sp_abundance2=wa_sp_tot%>%
+  nest(-Species)%>%
+  mutate(model= list(brm(bf(rel_abund~ 1+s(YR)), 
+                         data=data, 
+                         iter=2500, 
+                         family=zero_inflated_beta(link = "logit", link_phi = "log", link_zi = "logit"),
+                         control=list(adapt_delta=0.99))),
+         preds=purrr::map(model, posterior_predict))%>%
+  unnest(preds)%>%as.data.frame()
+
+
+wa_spab=wa_sp_abundance2%>%
+  group_by(Species)%>%
+  mutate(iter=seq(1:5000))
+
+wa_splist=wa_spab%>%select(Species, iter)
+
+wa_spab2=as.data.frame(wa_spab$preds[,])
+
+wa_spab3=cbind(wa_spab2, wa_splist)%>%
+  pivot_longer(names_to="year", values_to="estimates", cols=1:21)%>%
+  mutate(period=case_when(year%in%c("V1", "V2", "V3", "V4", "V5") ~ "T1",
+                          year%in%c("V17", "V18", "V19", "V20", "V21") ~ "T2"))%>%
+  filter(!is.na(period))%>%select(-year)%>%group_by(Species,iter,period)%>%
+  summarise(mean_est=mean(estimates))%>%
+  pivot_wider(names_from=period, values_from = mean_est, names_sep = ".")%>%
+  mutate(shift=T2-T1)
+
+wa_sp_quant=wa_spab3%>%
+  group_by(Species)%>%
+  reframe(
+    q0=quantile(shift, 0.5),
+    q1=quantile(shift, 0.025),
+    q2=quantile(shift, 0.975))
