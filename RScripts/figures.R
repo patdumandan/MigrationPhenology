@@ -1,4 +1,70 @@
 #Figure 1####
+par(mfrow=c(3,1))
+
+par(mar = c(2.25, 2.5, 1, 2.5))
+x = seq(150, 600, by=1) 
+
+y = dnorm(x, mean=220, sd=20) 
+sy= dnorm(x, mean=340, sd=20) 
+
+
+plot(x, y, type="l",lty="dashed",lwd=2, xlab="", xaxt="n", 
+     ylab="Abundance",  xlim=c(150,410), ylim=c(0,0.025), yaxt="n", col="grey") 
+lines(x, sy, lwd=2) 
+abline(v=220, lty="dashed", lwd=2, col="grey")
+abline(v=340, lty="dashed", lwd=2, col="grey")
+
+arrows(x0=230, y0=0.02,x1=330, y1=0.02, lwd=2)
+text(x=180, y=0.024, "assemblage shift")
+
+x = seq(150, 600, by=1) 
+
+ay = dnorm(x, mean=210, sd=20) 
+by = dnorm(x, mean=230, sd=20)
+
+aay = dnorm(x, mean=330, sd=20) 
+bby = dnorm(x, mean=350, sd=20)
+
+
+plot(x, ay, type="l", lty="dashed", lwd=2, xlab="",xaxt="n", 
+     ylab="Abundance",  xlim=c(150,410)
+     , ylim=c(0,0.025), yaxt="n", col="red") 
+lines(x, by, lwd=2, col="blue", lty="dashed") 
+lines(x, bby, lwd=2, col="blue") 
+lines(x, aay, lwd=2, col="red") 
+abline(v=220, lty="dashed", lwd=2, col="grey")
+abline(v=340, lty="dashed", lwd=2, col="grey")
+
+arrows(x0=222, y0=0.022,x1=337, y1=0.022, col="black", lwd=2)
+text(x=180, y=0.022, "species phenology")
+
+x = seq(150, 600, by=1) 
+
+ay = dnorm(x, mean=210, sd=20) 
+by = dnorm(x, mean=350, sd=20)
+
+aay = dnorm(x, mean=210, sd=30) 
+byy = dnorm(x, mean=350, sd=10) 
+
+
+plot(x, ay, type="l", lty="dashed", lwd=2, xlab="time", 
+     ylab="Abundance",  xlim=c(150,410),yaxt="n",
+     ylim=c(0,0.05), col="red") 
+lines(x, aay, lwd=2, col="red") 
+lines(x, by, lwd=2, col="blue", lty="dashed") 
+lines(x, byy, lwd=2, col="blue") 
+
+
+abline(v=220, lty="dashed", lwd=2, col="grey")
+abline(v=340, lty="dashed", lwd=2, col="grey")
+
+arrows(x0=222, y0=0.038,x1=337, y1=0.038, col="black", lwd=2)
+text(x=180, y=0.038, "composition")
+arrows(x0=180, y0=0.02,x1=180, y1=0.01, col="black", lwd=2)
+arrows(x0=320, y0=0.020,x1=320, y1=0.03, col="black", lwd=2)
+
+
+#Figure 2####
 cape=read.csv("D:/Dropbox (UFL)/PhD-stuff/MigrationPhenology/data/CapeMay.csv")
 
 CapeMay=cape%>%
@@ -72,7 +138,7 @@ ylab("average daily count")+
     label = paste("CM"), type="expression"
   )+scale_color_manual(values=c("darkgreen", "gold"))
 
-#Figure 2####
+#Figure 3####
 
 hm_datphen=matrix(c(10,50,90,
                     -0.39,-8.9,-3.21, 
@@ -102,7 +168,7 @@ ggplot(cm_dat_phen)+geom_col(aes(x=shift, y=value))+ggtitle("Cape May")+
   scale_x_discrete(limits=c("overall", "species phenology", "composition"))+
   facet_wrap(~metric)+theme_classic()+ylab("shift (days)")
 
-#Figure 3####
+#Figure 4####
 #3a
 
 hm_sp_df_rela=left_join(hm_sp_abundance_meanpreds, hms_sp_tot)%>%as.data.frame()%>%
@@ -123,7 +189,7 @@ hm_sp_df_rela_diff=hm_sp_df_rela%>%
                         Species=="BAEA" ~ "fish",
                         Species=="PEFA" ~ "bird",
                         Species=="SSHA" ~ "bird",
-                        Species=="COHA" ~ "mammal",
+                        Species=="COHA" ~ "bird",
                         Species=="NOHA" ~ "mammal",
                         Species=="BLVU" ~ "carrion",
                         Species=="TUVU" ~ "carrion",
@@ -190,7 +256,7 @@ cm_sp_df_rela_diff=cm_sp_df_rela%>%
                         Species=="BE" ~ "fish",
                         Species=="PG" ~ "bird",
                         Species=="SS" ~ "bird",
-                        Species=="CH" ~ "mammal",
+                        Species=="CH" ~ "bird",
                         Species=="NH" ~ "mammal",
                         Species=="BV" ~ "carrion",
                         Species=="TV" ~ "carrion",
@@ -254,3 +320,67 @@ cmplot=ggplot(cm_diffs_all, aes(x=time_shift, y=rela_shift, col=diet, size=ave_t
 
 cmplot+guides(size=FALSE)
 
+#Appendix####
+#Fig 1
+#HMS
+
+hms_10pd_site=cbind(hms_10pd_site, mod10pred)%>%mutate(metric="onset")
+hm10=ggplot(hms_10pd_site, aes(y=hms_10pd_site$Julian, x=hms_10pd_site$YR))+geom_point()+
+  annotate("rect", ymin=min(hms_10pd_site$Julian), ymax=max(hms_10pd_site$Julian),
+           xmin=1990, xmax=1994, alpha=0.2, fill="red")+xlab("Year")+ylab("10% passage date (Julian)")+
+  annotate("rect", ymin=min(hms_10pd_site$Julian), ymax=max(hms_10pd_site$Julian),
+           xmin=2014, xmax=max(hms_10pd_site$YR), alpha=0.2, fill="red")+
+  theme_classic()+
+  geom_line(aes(x=YR, y=pred_JD), linetype="dashed")
+
+hms_50pd_site=cbind(hms_50pd_site, mod50pred)%>%mutate(metric="mean")
+hm50=ggplot(hms_50pd_site, aes(y=hms_50pd_site$Julian, x=hms_50pd_site$YR))+geom_point()+
+  annotate("rect", ymin=min(hms_50pd_site$Julian), ymax=max(hms_50pd_site$Julian),
+           xmin=1990, xmax=1994, alpha=0.2, fill="red")+xlab("Year")+ylab("50% passage date (Julian)")+
+  annotate("rect", ymin=min(hms_50pd_site$Julian), ymax=max(hms_50pd_site$Julian),
+           xmin=2014, xmax=max(hms_50pd_site$YR), alpha=0.2, fill="red")+
+  theme_classic()+
+  geom_line(aes(x=YR, y=pred_JD), linetype="dashed")
+
+hms_90pd_site=cbind(hms_90pd_site, mod90pred)%>%mutate(metric="end")
+hm90=ggplot(hms_90pd_site, aes(y=hms_90pd_site$Julian, x=hms_90pd_site$YR))+geom_point()+
+  annotate("rect", ymin=min(hms_90pd_site$Julian), ymax=max(hms_90pd_site$Julian),
+           xmin=1990, xmax=1994, alpha=0.2, fill="red")+xlab("Year")+ylab("90% passage date (Julian)")+
+  annotate("rect", ymin=min(hms_90pd_site$Julian), ymax=max(hms_90pd_site$Julian),
+           xmin=2014, xmax=max(hms_90pd_site$YR), alpha=0.2, fill="red")+
+  theme_classic()+
+  geom_line(aes(x=YR, y=pred_JD), linetype="dashed")
+
+hm1=ggarrange(hm10, hm50, hm90, nrow=3, ncol=1)
+annotate_figure(hm1, top=text_grob("Hawk Mountain Sanctuary", face="bold"))
+
+#Cape May
+cm_10pd_site=cbind(cm_10pd_site, cm_mod10pred)%>%mutate(metric="onset")
+cm10=ggplot(cm_10pd_site, aes(y=cm_10pd_site$Julian, x=cm_10pd_site$YR))+geom_point()+
+  annotate("rect", ymin=min(cm_10pd_site$Julian), ymax=max(cm_10pd_site$Julian),
+           xmin=1990, xmax=1994, alpha=0.2, fill="red")+xlab("Year")+ylab("10% passage date (Julian)")+
+  annotate("rect", ymin=min(cm_10pd_site$Julian), ymax=max(cm_10pd_site$Julian),
+           xmin=2014, xmax=max(cm_10pd_site$YR), alpha=0.2, fill="red")+
+  theme_classic()+
+  geom_line(aes(x=YR, y=pred_JD), linetype="dashed")
+
+cm_50pd_site=cbind(cm_50pd_site, cm_mod50pred)%>%mutate(metric="mean")
+cm50=ggplot(cm_50pd_site, aes(y=cm_50pd_site$Julian, x=cm_50pd_site$YR))+geom_point()+
+  annotate("rect", ymin=min(cm_50pd_site$Julian), ymax=max(cm_50pd_site$Julian),
+           xmin=1990, xmax=1994, alpha=0.2, fill="red")+xlab("Year")+ylab("50% passage date (Julian)")+
+  annotate("rect", ymin=min(cm_50pd_site$Julian), ymax=max(cm_50pd_site$Julian),
+           xmin=2014, xmax=max(cm_50pd_site$YR), alpha=0.2, fill="red")+
+  theme_classic()+
+  geom_line(aes(x=YR, y=pred_JD), linetype="dashed")
+
+cm_90pd_site=cbind(cm_90pd_site, cm_mod90pred)%>%mutate(metric="end")
+cm90=ggplot(cm_90pd_site, aes(y=cm_90pd_site$Julian, x=cm_90pd_site$YR))+geom_point()+
+  annotate("rect", ymin=min(cm_90pd_site$Julian), ymax=max(cm_90pd_site$Julian),
+           xmin=1990, xmax=1994, alpha=0.2, fill="red")+xlab("Year")+ylab("90% passage date (Julian)")+
+  annotate("rect", ymin=min(cm_90pd_site$Julian), ymax=max(cm_90pd_site$Julian),
+           xmin=2014, xmax=max(cm_90pd_site$YR), alpha=0.2, fill="red")+
+  theme_classic()+
+  geom_line(aes(x=YR, y=pred_JD), linetype="dashed")
+
+cm1=ggarrange(cm10, cm50, cm90, nrow=3, ncol=1)
+annotate_figure(cm1, top=text_grob("Cape May", face="bold"))
