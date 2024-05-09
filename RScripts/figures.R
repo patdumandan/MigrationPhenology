@@ -196,10 +196,25 @@ hm_sp_df_rela_diff=hm_sp_df_rela%>%
                         Species=="NOGO" ~ "bird",
                         Species=="GOEA" ~ "mammal",
                         Species=="RSHA" ~ "mammal",
-                        Species=="RTHA" ~ "mammal"))
+                        Species=="RTHA" ~ "mammal"))%>%
+  mutate(mean_time=case_when(Species=="AMKE" ~ "268",
+                             Species=="BWHA" ~ "259",
+                             Species=="OSPR" ~ "262",
+                             Species=="MERL" ~ "280",
+                             Species=="BAEA" ~ "270",
+                             Species=="PEFA" ~ "276",
+                             Species=="SSHA" ~ "284",
+                             Species=="COHA" ~ "285",
+                             Species=="NOHA" ~ "288",
+                             Species=="BLVU" ~ "301",
+                             Species=="TUVU" ~ "295",
+                             Species=="NOGO" ~ "312",
+                             Species=="GOEA" ~ "309",
+                             Species=="RSHA" ~ "303",
+                             Species=="RTHA" ~ "305"))
 
 hm_sp_diff_rel=hm_sp_df_rela_diff%>%
-  select(Species, shift, diet)%>%
+  select(Species, shift, diet, mean_time)%>%
   rename(rela_shift=shift)
 
 hm_sp_diff10_time=hm_sp_diff10%>%
@@ -278,10 +293,25 @@ cm_sp_df_rela_diff=cm_sp_df_rela%>%
                           Species=="NG" ~ "NOGO",
                           Species=="GE" ~ "GOEA",
                           Species=="RS" ~ "RSHA",
-                          Species=="RT" ~ "RTHA"))
+                          Species=="RT" ~ "RTHA"))%>%  
+mutate(mean_time=case_when(spcode=="AMKE" ~ "271",
+                           spcode=="BWHA" ~ "274",
+                           spcode=="OSPR" ~ "270",
+                           spcode=="MERL" ~ "275",
+                           spcode=="BAEA" ~ "280",
+                           spcode=="PEFA" ~ "276",
+                           spcode=="SSHA" ~ "283",
+                           spcode=="COHA" ~ "283",
+                           spcode=="NOHA" ~ "291",
+                           spcode=="BLVU" ~ "303",
+                           spcode=="TUVU" ~ "304",
+                           spcode=="NOGO" ~ "312",
+                           spcode=="GOEA" ~ "305",
+                           spcode=="RSHA" ~ "310",
+                           spcode=="RTHA" ~ "309"))
 
 cm_sp_diff_rel=cm_sp_df_rela_diff%>%
-  select(Species, spcode, shift, diet)%>%
+  select(Species, spcode, shift, diet, mean_time)%>%
   rename(rela_shift=shift)
 
 cm_sp_diff10_time=cm_sp_diff10%>%
@@ -384,3 +414,54 @@ cm90=ggplot(cm_90pd_site, aes(y=cm_90pd_site$Julian, x=cm_90pd_site$YR))+geom_po
 
 cm1=ggarrange(cm10, cm50, cm90, nrow=3, ncol=1)
 annotate_figure(cm1, top=text_grob("Cape May", face="bold"))
+
+
+#alternatives####
+c1=hm_diffs_all%>%filter(metric==10)
+hm_alt=
+  ggplot(c1, aes(x=mean_time, y=rela_shift, col=diet, size=ave_tot))+
+  geom_point()+facet_wrap(~metric, nrow=3, ncol=1)+
+  geom_text(label=c1$data_labels, size=3, col="black", hjust = -0.7)+
+  theme_classic()+geom_vline(xintercept = 0, linetype = 2)+
+  geom_hline(yintercept = 0, linetype = 2)+ggtitle("Hawk Mountain Sanctuary")+
+  ylab("relative abundance shifts")+xlab("50% passage date (Julian date)")+
+  scale_color_viridis_d()+xlim(min(c1$mean_time),max(c1$mean_time))+guides(size=FALSE)
+
+
+d1=cm_diffs_all%>%filter(metric==10)
+
+cm_alt=
+  ggplot(d1, aes(x=mean_time, y=rela_shift, col=diet, size=ave_tot))+
+  geom_point()+
+  geom_text(label=d1$data_labels, size=3, col="black", hjust = -1.3)+
+  theme_classic()+geom_vline(xintercept = 0, linetype = 2)+
+  geom_hline(yintercept = 0, linetype = 2)+ggtitle("Cape May")+
+  ylab("relative abundance shifts")+xlab("50% passage date (Julian date)")+
+  scale_color_viridis_d()+xlim(min(d1$mean_time),max(d1$mean_time))+guides(size=FALSE)
+
+ggarrange(hm_alt,cm_alt, common.legend = TRUE, legend="bottom")
+
+
+#fig 4
+hm_time_alt=
+  ggplot(hm_diffs_all, aes(x=Species, y=time_shift, col=diet, size=ave_tot))+
+  geom_point()+facet_wrap(~metric, nrow=3, ncol=1)+
+  #  geom_text(label=hm_diffs_all$data_labels, size=3, col="black", hjust = -0.7)+
+  theme_classic()+geom_vline(xintercept = 0, linetype = 2)+
+  geom_hline(yintercept = 0, linetype = 2)+ggtitle("Hawk Mountain Sanctuary")+
+  ylab("phenological shifts")+xlab("Species")+
+  scale_color_viridis_d()+
+  guides(size=FALSE)
+
+
+cm_time_alt=
+  ggplot(cm_diffs_all, aes(x=spcode, y=time_shift, col=diet, size=ave_tot))+
+  geom_point()+facet_wrap(~metric, nrow=3, ncol=1)+
+  #  geom_text(label=hm_diffs_all$data_labels, size=3, col="black", hjust = -0.7)+
+  theme_classic()+geom_vline(xintercept = 0, linetype = 2)+
+  geom_hline(yintercept = 0, linetype = 2)+ggtitle("Cape May")+
+  ylab("phenological shifts")+xlab("Species")+
+  scale_color_viridis_d()+
+  guides(size=FALSE)
+
+ggarrange(hm_time_alt, cm_time_alt, common.legend = T, legend="bottom")
